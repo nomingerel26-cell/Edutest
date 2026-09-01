@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, empty_state, status_badge, kind_badge with context %}
+{% block title %}Үр дүн — EduTest{% endblock %}
+{% block page_title %}Үр дүн{% endblock %}
+{% block breadcrumb %}<p class="crumb">Хариулт ирсэн тестүүд</p>{% endblock %}
+
+{% block content %}
+{% if tests %}
+<div class="card">
+  <div class="card-head">
+    <h3 class="section-title">Хариулт ирсэн тестүүд</h3>
+    <div class="spacer"></div>
+    <span class="badge neutral">{{ tests|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="data stacked">
+      <thead>
+        <tr><th class="wrap">Гарчиг</th><th>Хичээл</th><th>Төрөл</th><th>Төлөв</th>
+          <th>Бүлэг</th><th class="n">Илгээсэн</th><th></th></tr>
+      </thead>
+      <tbody>
+      {% for t in tests %}
+        <tr>
+          <td class="wrap" data-label="Гарчиг">
+            <a href="{{ url_for('test_results', test_id=t.id) }}">{{ t.title }}</a>
+          </td>
+          <td data-label="Хичээл">{{ t.course_code }}</td>
+          <td data-label="Төрөл">{{ kind_badge(t.kind) }}</td>
+          <td data-label="Төлөв">{{ status_badge(t.status) }}</td>
+          <td data-label="Бүлэг">{{ t.class_group_name or 'Бүх бүлэг' }}</td>
+          <td class="n" data-label="Илгээсэн">{{ t.attempt_count }}</td>
+          <td class="actions">
+            <div class="btn-row">
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('test_results', test_id=t.id) }}">
+                {{ icon('results', 14) }}<span>Харах</span></a>
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('test_results_csv', test_id=t.id) }}">
+                {{ icon('download', 14) }}<span>CSV</span></a>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+  {% call empty_state('Хариулт ирээгүй байна.',
+        'Тестийг «Нээлттэй» болгож, QR холбоосыг оюутнуудад тараасны дараа үр дүн энд хуримтлагдана.', 'inbox') %}
+    <a class="btn" href="{{ url_for('tests_index') }}">{{ icon('file', 16) }}<span>Тестүүд рүү очих</span></a>
+  {% endcall %}
+{% endif %}
+{% endblock %}

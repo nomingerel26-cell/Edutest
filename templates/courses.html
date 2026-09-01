@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, empty_state with context %}
+{% block title %}Хичээл ба анги — EduTest{% endblock %}
+{% block page_title %}Хичээл ба анги{% endblock %}
+{% block breadcrumb %}<p class="crumb">Хичээл, ангийн бүлгийг эндээс удирдана</p>{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-head"><h3 class="section-title">Шинэ хичээл нэмэх</h3></div>
+  <div class="card-body">
+    <form method="post" novalidate data-guard data-busy-label="Хадгалж байна…">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-row">
+        <div class="field">
+          <label for="name">Хичээлийн нэр <span class="req">*</span></label>
+          <input type="text" id="name" name="name" placeholder="Эмийн хими 1" required>
+        </div>
+        <div class="field">
+          <label for="code">Код <span class="req">*</span></label>
+          <input type="text" id="code" name="code" placeholder="PHR201" required>
+          <p class="hint">QR холбоосын эхэнд орно, давхардахгүй байх ёстой.</p>
+        </div>
+        <div class="field">
+          <label for="credit">Кредит <span class="req">*</span></label>
+          <input type="number" id="credit" name="credit" value="3"
+                 min="0.5" max="30" step="0.5" required>
+          <p class="hint">Бутархай кредит бичиж болно (жишээ: 3.5).</p>
+        </div>
+        <div class="field">
+          <label for="semester">Улирал <span class="req">*</span></label>
+          <input type="text" id="semester" name="semester" placeholder="2026 Намар" required>
+        </div>
+      </div>
+      <button class="btn" type="submit">{{ icon('plus', 16) }}<span>Хичээл нэмэх</span></button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3 class="section-title">Бүртгэлтэй хичээлүүд</h3>
+    <div class="spacer"></div>
+    <span class="badge neutral">{{ courses|length }}</span>
+  </div>
+  {% if courses %}
+    <div class="table-wrap">
+      <table class="data stacked">
+        <thead>
+          <tr><th>Код</th><th class="wrap">Нэр</th><th class="n">Кредит</th><th>Улирал</th>
+            <th class="n">Бүлэг</th><th class="n">Тест</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for c in courses %}
+          <tr>
+            <td data-label="Код"><strong>{{ c.code }}</strong></td>
+            <td class="wrap" data-label="Нэр">{{ c.name }}</td>
+            <td class="n" data-label="Кредит">{{ c.credit | credit }}</td>
+            <td data-label="Улирал">{{ c.semester }}</td>
+            <td class="n" data-label="Бүлэг">{{ c.group_count }}</td>
+            <td class="n" data-label="Тест">{{ c.test_count }}</td>
+            <td class="actions">
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('course_detail', course_id=c.id) }}">Нээх</a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card-body">
+      {{ empty_state('Одоогоор хичээл алга.', 'Дээрх формоор эхний хичээлээ нэмнэ үү.', 'book') }}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

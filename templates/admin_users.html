@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, delete_form with context %}
+{% block title %}Хэрэглэгчид — EduTest{% endblock %}
+{% block page_title %}Хэрэглэгчид{% endblock %}
+{% block breadcrumb %}<p class="crumb">Зөвхөн админ эрхтэй</p>{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-head">
+    <h3 class="section-title">Бүртгэлтэй хэрэглэгчид</h3>
+    <div class="spacer"></div>
+    <span class="badge neutral">{{ users|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="data stacked">
+      <thead><tr><th class="wrap">Овог нэр</th><th class="wrap">Имэйл</th><th>Эрх</th>
+        <th class="wrap">Салбар</th><th></th></tr></thead>
+      <tbody>
+      {% for u in users %}
+        <tr>
+          <td class="wrap" data-label="Овог нэр"><strong>{{ u.full_name }}</strong></td>
+          <td class="wrap" data-label="Имэйл">{{ u.email }}</td>
+          <td data-label="Эрх">
+            <span class="badge {{ 'post' if u.role == 'admin' else 'pre' }}">
+              {{ 'Админ' if u.role == 'admin' else 'Багш' }}</span>
+          </td>
+          <td class="wrap" data-label="Салбар">{{ u.department or '—' }}</td>
+          <td class="actions">
+            {% if u.id != current_user.id %}
+              {{ delete_form(url_for('admin_delete_user', user_id=u.id),
+                             '«' ~ u.full_name ~ '»-ийг устгах уу? Түүний хичээл, тест, оюутны хариулт бүгд хамт устана.',
+                             csrf_token, 'Устгах', 'Хэрэглэгч устгах') }}
+            {% else %}<span class="hint">Та өөрөө</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h3 class="section-title">Шинэ хэрэглэгч нэмэх</h3></div>
+  <div class="card-body">
+    <form method="post" novalidate data-guard data-busy-label="Хадгалж байна…">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-row">
+        <div class="field">
+          <label for="full_name">Овог нэр <span class="req">*</span></label>
+          <input type="text" id="full_name" name="full_name" required>
+        </div>
+        <div class="field">
+          <label for="email">Имэйл <span class="req">*</span></label>
+          <input type="email" id="email" name="email" autocomplete="off" required>
+          <p class="hint">Нэвтрэх нэр болно. Оюутны тааруулалттай холбоогүй.</p>
+        </div>
+        <div class="field">
+          <label for="password">Нууц үг <span class="req">*</span></label>
+          <div class="input-icon">
+            {{ icon('lock', 17) }}
+            <input type="password" id="password" name="password" minlength="8"
+                   autocomplete="new-password" required style="padding-right:42px;">
+            <button class="toggle-pw" type="button" data-toggle-password="password"
+                    aria-label="Нууц үгийг харуулах">
+              {{ icon('eye', 17) }}
+              <svg class="icon" width="17" height="17" style="display:none" aria-hidden="true"><use href="#icon-eye-off"></use></svg>
+            </button>
+          </div>
+          <p class="hint">Хамгийн багадаа 8 тэмдэгт. PBKDF2-SHA256-аар хэшлэгдэнэ.</p>
+        </div>
+        <div class="field">
+          <label for="role">Эрх <span class="req">*</span></label>
+          <select id="role" name="role">
+            <option value="teacher">Багш</option>
+            <option value="admin">Админ</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="department">Салбар</label>
+          <input type="text" id="department" name="department" placeholder="Эм зүйн салбар">
+        </div>
+      </div>
+      <button class="btn" type="submit">{{ icon('plus', 16) }}<span>Хэрэглэгч нэмэх</span></button>
+    </form>
+  </div>
+</div>
+{% endblock %}

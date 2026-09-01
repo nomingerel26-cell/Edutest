@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, empty_state, status_badge, kind_badge, delete_form with context %}
+{% block title %}{{ course.code }} — EduTest{% endblock %}
+{% block page_title %}{{ course.name }}{% endblock %}
+{% block breadcrumb %}
+<p class="crumb"><a href="{{ url_for('courses') }}">Хичээл ба анги</a> / {{ course.code }}</p>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="btn-row" style="margin-bottom:4px;">
+      <span class="badge pre">{{ course.code }}</span>
+      <span class="badge neutral">{{ course.credit | credit }} кредит</span>
+    </div>
+    <p class="sub">{{ course.semester }} · Багш: {{ course.teacher_name }}</p>
+  </div>
+</div>
+
+{# ================= Ангийн бүлэг ================= #}
+<div class="card">
+  <div class="card-head">
+    <h3 class="section-title">Ангийн бүлгүүд</h3>
+    <div class="spacer"></div>
+    <span class="badge neutral">{{ groups|length }}</span>
+  </div>
+
+  {% if groups %}
+    <div class="table-wrap">
+      <table class="data stacked">
+        <thead><tr><th>Нэр</th><th class="n">Оюутны тоо</th><th></th></tr></thead>
+        <tbody>
+        {% for gr in groups %}
+          <tr>
+            <td data-label="Нэр"><strong>{{ gr.name }}</strong></td>
+            <td class="n" data-label="Оюутны тоо">{{ gr.student_count }}</td>
+            <td class="actions">
+              {{ delete_form(url_for('delete_group', group_id=gr.id),
+                             '«' ~ gr.name ~ '» бүлгийг устгах уу? Энэ бүлгийн оюутан, оролдлого, хариулт хамт устана.',
+                             csrf_token, 'Устгах', 'Бүлэг устгах') }}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card-body">
+      {{ empty_state('Бүлэг бүртгэгдээгүй байна.',
+           'Оюутан тест бөглөхдөө бүлгээ сонгодог. Бүлэг нь Оролт/Гаралт тааруулах түлхүүрийн нэг хэсэг тул хамгийн багадаа нэгийг нэмнэ үү.', 'users') }}
+    </div>
+  {% endif %}
+
+  <div class="card-body" style="border-top:1px solid var(--border);">
+    <form method="post" action="{{ url_for('create_group', course_id=course.id) }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-row">
+        <div class="field">
+          <label for="gname">Бүлгийн нэр <span class="req">*</span></label>
+          <input type="text" id="gname" name="name" placeholder="PH23A" required>
+        </div>
+        <div class="field">
+          <label for="gcount">Оюутны тоо</label>
+          <input type="number" id="gcount" name="student_count" value="0" min="0">
+        </div>
+      </div>
+      <button class="btn btn-ghost" type="submit">{{ icon('plus', 16) }}<span>Бүлэг нэмэх</span></button>
+    </form>
+  </div>
+</div>
+
+{# ================= Pre/Post хос ================= #}
+<div class="card">
+  <div class="card-head">
+    <h3 class="section-title">Оролт/Гаралтын тестийн хос</h3>
+    <div class="spacer"></div>
+    <span class="badge neutral">{{ pairs|length }}</span>
+  </div>
+
+  {% if pairs %}
+    <div class="table-wrap">
+      <table class="data stacked">
+        <thead><tr><th class="wrap">Хосын нэр</th><th class="wrap">Оролтын тест</th>
+          <th class="wrap">Гаралтын тест</th><th></th></tr></thead>
+        <tbody>
+        {% for p in pairs %}
+          <tr>
+            <td class="wrap" data-label="Хос"><strong>{{ p.name }}</strong></td>
+            <td class="wrap" data-label="Оролт">
+              {% if p.pre_test_id %}
+                <a href="{{ url_for('test_detail', test_id=p.pre_test_id) }}">{{ p.pre_title }}</a>
+              {% else %}—{% endif %}
+            </td>
+            <td class="wrap" data-label="Гаралт">
+              {% if p.post_test_id %}
+                <a href="{{ url_for('test_detail', test_id=p.post_test_id) }}">{{ p.post_title }}</a>
+              {% else %}—{% endif %}
+            </td>
+            <td class="actions">
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('pair_comparison', pair_id=p.id) }}">
+                {{ icon('trend', 14) }}<span>Шинжилгээ</span></a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card-body">
+      {{ empty_state('Тестийн хос үүсээгүй байна.',
+           'Хос үүсгэхэд Оролт болон Гаралтын тест хоёулаа автоматаар бэлдэгдэж, тус бүр өөрийн QR холбоостой болно.', 'pair') }}
+    </div>
+  {% endif %}
+
+  <div class="card-body" style="border-top:1px solid var(--border);">
+    <form method="post" action="{{ url_for('create_pair', course_id=course.id) }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-row">
+        <div class="field">
+          <label for="pname">Хосын нэр <span class="req">*</span></label>
+          <input type="text" id="pname" name="name"
+                 placeholder="{{ course.name }} — {{ course.semester }}" required>
+        </div>
+        <div class="field">
+          <label for="pgroup">Ангийн бүлэг</label>
+          <select id="pgroup" name="class_group_id">
+            <option value="">Бүх бүлэг</option>
+            {% for gr in groups %}<option value="{{ gr.id }}">{{ gr.name }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <button class="btn" type="submit" {% if not groups %}disabled{% endif %}>
+        {{ icon('pair', 16) }}<span>Оролт + Гаралтын хос үүсгэх</span>
+      </button>
+      {% if not groups %}<p class="hint">Эхлээд ангийн бүлэг нэмнэ үү.</p>{% endif %}
+    </form>
+  </div>
+</div>
+
+{# ================= Тестүүд ================= #}
+<div class="card">
+  <div class="card-head">
+    <h3 class="section-title">Энэ хичээлийн тестүүд</h3>
+    <div class="spacer"></div>
+    <a class="btn btn-quiet btn-sm" href="{{ url_for('tests_index') }}">Бүх тест</a>
+  </div>
+  {% if tests %}
+    <div class="table-wrap">
+      <table class="data stacked">
+        <thead><tr><th class="wrap">Гарчиг</th><th>Төрөл</th><th>Төлөв</th><th>Бүлэг</th>
+          <th class="n">Асуулт</th><th class="n">Оролдлого</th><th></th></tr></thead>
+        <tbody>
+        {% for t in tests %}
+          <tr>
+            <td class="wrap" data-label="Гарчиг">
+              <a href="{{ url_for('test_detail', test_id=t.id) }}">{{ t.title }}</a>
+            </td>
+            <td data-label="Төрөл">{{ kind_badge(t.kind) }}</td>
+            <td data-label="Төлөв">{{ status_badge(t.status) }}</td>
+            <td data-label="Бүлэг">{{ t.class_group_name or 'Бүх бүлэг' }}</td>
+            <td class="n" data-label="Асуулт">{{ t.question_count }}</td>
+            <td class="n" data-label="Оролдлого">{{ t.attempt_count }}</td>
+            <td class="actions">
+              <div class="btn-row">
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('test_detail', test_id=t.id) }}">
+                  {{ icon('edit', 14) }}<span>Засах</span></a>
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('test_share', test_id=t.id) }}">
+                  {{ icon('qr', 14) }}<span>QR</span></a>
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('test_results', test_id=t.id) }}">
+                  {{ icon('results', 14) }}<span>Үр дүн</span></a>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card-body">
+      {{ empty_state('Тест байхгүй байна.',
+           'Дээрх «Оролт + Гаралтын хос үүсгэх» товчоор эхлүүлнэ үү.', 'file') }}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

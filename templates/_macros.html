@@ -1,0 +1,90 @@
+{# =====================================================================
+   Дахин ашиглагдах Jinja component-ууд.
+   Бүх хуудас эдгээрийг ашиглаж, нэг загварыг хадгална.
+   ===================================================================== #}
+
+{# --- Icon ------------------------------------------------------------ #}
+{% macro icon(name, size=18) -%}
+<svg class="icon" width="{{ size }}" height="{{ size }}" aria-hidden="true" focusable="false"><use href="#icon-{{ name }}"></use></svg>
+{%- endmacro %}
+
+{# --- Төлөвийн тэмдэг ------------------------------------------------- #}
+{% set STATUS_MN = {'draft': 'Ноорог', 'open': 'Нээлттэй', 'closed': 'Хаагдсан'} %}
+{% set KIND_MN = {'pre': 'Оролт', 'post': 'Гаралт'} %}
+
+{% macro status_badge(status) -%}
+<span class="badge dot {{ status }}">{{ STATUS_MN.get(status, status) }}</span>
+{%- endmacro %}
+
+{% macro kind_badge(kind) -%}
+<span class="badge {{ kind }}">{{ KIND_MN.get(kind, kind) }}</span>
+{%- endmacro %}
+
+{% macro match_badge(status) -%}
+  {%- if status == 'matched' -%}<span class="badge matched">Тааруулсан</span>
+  {%- elif status == 'pre_only' -%}<span class="badge partial">Зөвхөн оролт</span>
+  {%- else -%}<span class="badge partial">Зөвхөн гаралт</span>{%- endif -%}
+{%- endmacro %}
+
+{# --- Тоон үзүүлэлтийн карт -------------------------------------------- #}
+{% macro stat(label, value, note='', tone='', accent=false) -%}
+<div class="stat {{ tone }}{{ ' accent' if accent }}">
+  <div class="stat-label">{{ label }}</div>
+  <div class="stat-value">{{ value }}</div>
+  {% if note %}<div class="stat-note">{{ note }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{# --- Ахицын өөрчлөлт: ногоон / саарал / улаан ------------------------- #}
+{% macro delta(value, suffix='%') -%}
+  {%- if value is none -%}<span class="delta-flat">—</span>
+  {%- elif value > 0 -%}<span class="delta-up">+{{ value }}{{ suffix }}</span>
+  {%- elif value < 0 -%}<span class="delta-down">{{ value }}{{ suffix }}</span>
+  {%- else -%}<span class="delta-flat">0{{ suffix }}</span>{%- endif -%}
+{%- endmacro %}
+
+{# Ахицыг диверген баганаар — эерэг баруун тийш, сөрөг зүүн тийш #}
+{% macro delta_bar(value) -%}
+<div class="deltabar">
+  <div class="deltabar-track">
+    {% if value is not none and value != 0 %}
+      {% set width = (value|abs if value|abs < 50 else 50) %}
+      <span class="deltabar-fill {{ 'pos' if value > 0 else 'neg' }}" style="width: {{ width }}%"></span>
+    {% endif %}
+  </div>
+  <span class="deltabar-label">{{ delta(value) }}</span>
+</div>
+{%- endmacro %}
+
+{# --- Хоосон төлөв ----------------------------------------------------- #}
+{% macro empty_state(title, message, icon_name='inbox') -%}
+<div class="empty">
+  {{ icon(icon_name, 40) }}
+  <strong>{{ title }}</strong>
+  <p>{{ message }}</p>
+  {{ caller() if caller is defined }}
+</div>
+{%- endmacro %}
+
+{# --- Мэдэгдэл --------------------------------------------------------- #}
+{% macro alert(kind, text) -%}
+<div class="alert {{ kind }}">
+  {{ icon('warning' if kind in ('warning', 'error') else ('check' if kind == 'success' else 'info')) }}
+  <div>{{ text }}</div>
+</div>
+{%- endmacro %}
+
+{# --- Устгах товч + баталгаажуулах цонх --------------------------------
+   JavaScript идэвхтэй үед <dialog> нээгдэнэ, идэвхгүй үед форм шууд
+   илгээгдэнэ (сервер талд эрх шалгагдана).
+   ------------------------------------------------------------------- #}
+{% macro delete_form(action, question, csrf_token, label='Устгах', title='Устгахыг баталгаажуулна уу', small=true) -%}
+<form method="post" action="{{ action }}" class="inline"
+      data-confirm="{{ question }}" data-confirm-title="{{ title }}"
+      data-confirm-ok-label="{{ label }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button class="btn btn-danger {{ 'btn-sm' if small }}" type="submit">
+    {{ icon('trash', 15) }}<span>{{ label }}</span>
+  </button>
+</form>
+{%- endmacro %}

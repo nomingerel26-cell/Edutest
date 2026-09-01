@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon with context %}
+{% block title %}Үр дүн — {{ attempt.test_title }}{% endblock %}
+
+{% block content %}
+<div class="public-wrap public-wide">
+
+  <div class="card">
+    <div class="card-body score-hero">
+      <p class="hint" style="margin:0 0 4px;">{{ attempt.test_title }}</p>
+      <p class="hint" style="margin:0 0 var(--sp-4);">
+        {{ 'Оролтын тест' if attempt.test_kind == 'pre' else 'Гаралтын тест' }}
+      </p>
+
+      <div class="score-ring" style="--pct: {{ attempt.percent }};">
+        <div class="score-ring-inner">
+          <div class="score-pct">{{ attempt.percent }}%</div>
+          <div class="score-of">{{ attempt.total_score }} / {{ attempt.max_score }} балл</div>
+        </div>
+      </div>
+
+      <div class="grid grid-3" style="margin-top: var(--sp-5);">
+        <div class="stat">
+          <div class="stat-label">Зөв хариулт</div>
+          <div class="stat-value" style="color: var(--success);">{{ correct_count }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Буруу хариулт</div>
+          <div class="stat-value" style="color: var(--danger);">{{ wrong_count }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Нийт асуулт</div>
+          <div class="stat-value">{{ answers|length }}</div>
+        </div>
+      </div>
+
+      <p class="hint" style="margin: var(--sp-5) 0 0;">
+        {{ attempt.entered_full_name }} · Илгээсэн: {{ attempt.submitted_at[:16].replace('T', ' ') }}
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <h3 class="section-title" style="margin-bottom:8px;">Дараагийн алхам</h3>
+      {% if attempt.test_kind == 'pre' %}
+        <p style="margin:0;color:var(--text-2);font-size:.9rem;">
+          Энэ бол <strong>оролтын тест</strong>. Хичээл дууссаны дараа багш
+          <strong>гаралтын тест</strong>-ийн холбоосыг өгнө. Тэр үед
+          <strong>яг ижил оюутны код, ижил бүлгээ</strong> оруулбал таны
+          ахиц автоматаар тооцогдоно.
+        </p>
+      {% else %}
+        <p style="margin:0;color:var(--text-2);font-size:.9rem;">
+          Энэ бол <strong>гаралтын тест</strong>. Оролтын тестийг ижил оюутны кодоор
+          өгсөн бол багшийн шинжилгээнд таны Оролт/Гаралтын ахиц харагдана.
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3 class="section-title">Асуулт тус бүрийн дүн</h3></div>
+    <div class="card-body">
+      {% for a in answers %}
+        <div class="q-card">
+          <div class="q-head">
+            <span class="q-num">{{ loop.index }}</span>
+            <span>{{ a.text }}</span>
+            <span class="q-score">
+              {% if a.is_correct %}
+                <span class="delta-up">Зөв +{{ a.earned_score }}</span>
+              {% else %}
+                <span class="delta-down">Буруу 0</span>
+              {% endif %}
+            </span>
+          </div>
+          <div class="opt {{ 'correct' if a.is_correct else 'wrong' }}">
+            <span class="opt-key">{{ '✓' if a.is_correct else '✕' }}</span>
+            <span>
+              {% if not a.selected_option %}Хариулаагүй
+              {% elif '>' in a.selected_option %}Таны харгалзуулалт:
+                {{ a.selected_option.replace('>', '→').replace(',', ',  ') }}
+              {% else %}Таны сонгосон: {{ a.selected_option.replace(',', ', ') }}
+              {% endif %}
+            </span>
+          </div>
+        </div>
+      {% endfor %}
+      <p class="hint">
+        Зөв хариултыг энд харуулахгүй — тест үргэлжилж байгаа тул бусад оюутны
+        шударга байдлыг хамгаалж байна. Дэлгэрэнгүйг багшаасаа лавлана уу.
+      </p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

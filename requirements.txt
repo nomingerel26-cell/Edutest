@@ -1,0 +1,26 @@
+# EduTest (Python + Flask + SQLite)
+#
+# Supabase, Firebase, PostgreSQL, Node.js, npm, React, Vite, Docker
+# АШИГЛААГҮЙ. Өгөгдлийн сан нь стандарт сангийн `sqlite3`.
+#
+# Стандарт сангаар хийгдсэн зүйлс:
+#   sqlite3 (өгөгдлийн сан), csv (CSV экспорт),
+#   hashlib/hmac/secrets (нууц үгийн хэшлэлт, CSRF token),
+#   re, unicodedata, io, os, datetime, unittest (тест).
+
+Flask>=3.0
+
+# Excel экспорт (.xlsx) — Summary / Student Results / Unmatched Attempts
+openpyxl>=3.1
+
+# Word тайлан (.docx)
+python-docx>=1.1
+
+# QR код (цэвэр Python, SVG гаралт — Pillow шаардахгүй)
+qrcode>=7.4
+
+# Word тайлангийн график (заавал биш).
+# Суулгаагүй бол Word тайлан ГРАФИКГҮЙГЭЭР бүрэн үүснэ — бусад бүх
+# боломж (CSV, Excel, QR, шинжилгээний вэб график) хэвээр ажиллана.
+# Хэмжээ том (~35 MB) тул хэрэггүй бол энэ мөрийг устгаж болно.
+matplotlib>=3.7

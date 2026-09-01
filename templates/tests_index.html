@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, empty_state, status_badge, kind_badge, delete_form with context %}
+{% block title %}Тестүүд — EduTest{% endblock %}
+{% block page_title %}Тестүүд{% endblock %}
+{% block breadcrumb %}<p class="crumb">Нийт {{ tests|length }} тест</p>{% endblock %}
+
+{% block content %}
+{% if tests %}
+<div class="card">
+  <div class="filterbar">
+    <div class="field grow">
+      <label for="q">Хайх</label>
+      <div class="input-icon">
+        {{ icon('search', 17) }}
+        <input type="search" id="q" data-filter-input
+               placeholder="Гарчиг, хичээл, код, бүлгээр хайх" autocomplete="off">
+      </div>
+    </div>
+    <div class="field">
+      <span class="label">Төлөв</span>
+      <div class="chips">
+        <button type="button" class="chip active" data-filter-chip="all" data-filter-group="status">Бүгд</button>
+        <button type="button" class="chip" data-filter-chip="draft" data-filter-group="status">Ноорог</button>
+        <button type="button" class="chip" data-filter-chip="open" data-filter-group="status">Нээлттэй</button>
+        <button type="button" class="chip" data-filter-chip="closed" data-filter-group="status">Хаагдсан</button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="label">Төрөл</span>
+      <div class="chips">
+        <button type="button" class="chip active" data-filter-chip="all" data-filter-group="kind">Бүгд</button>
+        <button type="button" class="chip" data-filter-chip="pre" data-filter-group="kind">Оролт</button>
+        <button type="button" class="chip" data-filter-chip="post" data-filter-group="kind">Гаралт</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data stacked">
+      <thead>
+        <tr>
+          <th class="wrap">Гарчиг</th><th>Хичээл</th><th>Төрөл</th><th>Төлөв</th>
+          <th>Бүлэг</th><th class="n">Асуулт</th><th class="n">Оролдлого</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for t in tests %}
+        <tr data-filter-row
+            data-status="{{ t.status }}" data-kind="{{ t.kind }}"
+            data-search="{{ t.title }} {{ t.course_name }} {{ t.course_code }} {{ t.class_group_name or '' }} {{ t.share_code }} {{ t.pair_name or '' }}">
+          <td class="wrap" data-label="Гарчиг">
+            <a href="{{ url_for('test_detail', test_id=t.id) }}">{{ t.title }}</a>
+            {% if t.pair_name %}<div class="hint">{{ t.pair_name }}</div>{% endif %}
+          </td>
+          <td data-label="Хичээл"><strong>{{ t.course_code }}</strong></td>
+          <td data-label="Төрөл">{{ kind_badge(t.kind) }}</td>
+          <td data-label="Төлөв">{{ status_badge(t.status) }}</td>
+          <td data-label="Бүлэг">{{ t.class_group_name or 'Бүх бүлэг' }}</td>
+          <td class="n" data-label="Асуулт">{{ t.question_count }}</td>
+          <td class="n" data-label="Оролдлого">{{ t.attempt_count }}</td>
+          <td class="actions">
+            <div class="btn-row">
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('test_detail', test_id=t.id) }}">
+                {{ icon('edit', 14) }}<span>Засах</span></a>
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('test_share', test_id=t.id) }}">
+                {{ icon('qr', 14) }}<span>QR</span></a>
+              {% if t.attempt_count %}
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('test_results', test_id=t.id) }}">
+                  {{ icon('results', 14) }}<span>Үр дүн</span></a>
+              {% endif %}
+              <form method="post" action="{{ url_for('duplicate_test', test_id=t.id) }}" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-ghost btn-sm" type="submit" title="Асуултын хамт хуулна">
+                  {{ icon('copy', 14) }}<span>Хувилах</span></button>
+              </form>
+              {% if t.status != 'open' %}
+                <form method="post" action="{{ url_for('change_test_status', test_id=t.id) }}" class="inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <input type="hidden" name="status" value="open">
+                  <button class="btn btn-ghost btn-sm" type="submit">{{ icon('play', 14) }}<span>Нээх</span></button>
+                </form>
+              {% else %}
+                <form method="post" action="{{ url_for('change_test_status', test_id=t.id) }}" class="inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <input type="hidden" name="status" value="closed">
+                  <button class="btn btn-ghost btn-sm" type="submit">{{ icon('stop', 14) }}<span>Хаах</span></button>
+                </form>
+              {% endif %}
+              {% if not t.attempt_count %}
+                {{ delete_form(url_for('delete_test', test_id=t.id),
+                               '«' ~ t.title ~ '» тестийг устгах уу? Асуултууд нь хамт устана.',
+                               csrf_token, 'Устгах', 'Тест устгах') }}
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card-body" data-filter-empty style="display:none">
+    {{ empty_state('Хайлтад тохирох тест олдсонгүй.', 'Өөр түлхүүр үг эсвэл шүүлтүүр сонгож үзнэ үү.', 'search') }}
+  </div>
+</div>
+{% else %}
+  {% call empty_state('Тест хараахан үүсээгүй байна.',
+        'Хичээл дотроос Оролт + Гаралтын хос үүсгэхэд хоёр тест автоматаар бэлдэгдэнэ.', 'file') %}
+    <a class="btn" href="{{ url_for('courses') }}">{{ icon('book', 16) }}<span>Хичээл рүү очих</span></a>
+  {% endcall %}
+{% endif %}
+{% endblock %}

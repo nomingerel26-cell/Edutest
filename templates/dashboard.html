@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, stat, status_badge, kind_badge, delta, empty_state with context %}
+{% block title %}Хяналтын самбар — EduTest{% endblock %}
+{% block page_title %}Хяналтын самбар{% endblock %}
+{% block breadcrumb %}
+<p class="crumb">{{ 'Бүх багшийн өгөгдөл' if current_user.role == 'admin' else 'Таны хичээлүүд' }}</p>
+{% endblock %}
+
+{% block topbar_actions %}
+<a class="btn btn-ghost btn-sm" href="{{ url_for('courses') }}">{{ icon('plus', 15) }}<span>Хичээл нэмэх</span></a>
+{% endblock %}
+
+{% block content %}
+
+{# ---- Үндсэн үзүүлэлт ---- #}
+<div class="grid grid-stats" style="margin-bottom: var(--sp-5);">
+  {{ stat('Нийт тест', stats.tests, stats.open_tests ~ ' нээлттэй', accent=true) }}
+  {{ stat('Pre/Post хос', stats.pairs) }}
+  {{ stat('Нийт оролцогч', stats.participants, stats.attempts ~ ' оролдлого') }}
+  {{ stat('Өнөөдөр өгсөн', stats.today, 'Илгээсэн хариулт') }}
+</div>
+
+<div class="grid grid-stats" style="margin-bottom: var(--sp-6);">
+  {{ stat('Оролтын дундаж', (stats.avg_pre ~ '%') if stats.avg_pre is not none else '—') }}
+  {{ stat('Гаралтын дундаж', (stats.avg_post ~ '%') if stats.avg_post is not none else '—') }}
+  <div class="stat {{ 'up' if stats.avg_delta and stats.avg_delta > 0 else ('down' if stats.avg_delta and stats.avg_delta < 0 else '') }}">
+    <div class="stat-label">Дундаж өсөлт</div>
+    <div class="stat-value">
+      {% if stats.avg_delta is none %}—{% else %}{{ '+' if stats.avg_delta > 0 }}{{ stats.avg_delta }}%{% endif %}
+    </div>
+    <div class="stat-note">Гаралт − Оролт</div>
+  </div>
+  {{ stat('Хичээл ба бүлэг', stats.courses ~ ' / ' ~ stats.groups, 'Хичээл / ангийн бүлэг') }}
+</div>
+
+{% if not stats.tests %}
+  {% call empty_state('Тест хараахан үүсээгүй байна.',
+        'Эхлээд хичээл нэмж, дараа нь Оролт + Гаралтын хос үүсгэнэ. Хос үүсэхэд хоёр тест автоматаар бэлдэгдэнэ.') %}
+    <a class="btn" href="{{ url_for('courses') }}">{{ icon('plus', 16) }}<span>Хичээл нэмэх</span></a>
+  {% endcall %}
+{% else %}
+
+<div class="grid grid-2">
+
+  {# ---- Сүүлийн тестүүд ---- #}
+  <div class="card">
+    <div class="card-head">
+      <h3 class="section-title">Сүүлийн тестүүд</h3>
+      <div class="spacer"></div>
+      <a class="btn btn-quiet btn-sm" href="{{ url_for('tests_index') }}">Бүгдийг харах</a>
+    </div>
+    {% if recent_tests %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th class="wrap">Гарчиг</th><th>Төрөл</th><th>Төлөв</th><th class="n">Асуулт</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for t in recent_tests %}
+            <tr>
+              <td class="wrap">
+                <a href="{{ url_for('test_detail', test_id=t.id) }}">{{ t.title }}</a>
+                <div class="hint">{{ t.course_code }}</div>
+              </td>
+              <td>{{ kind_badge(t.kind) }}</td>
+              <td>{{ status_badge(t.status) }}</td>
+              <td class="n">{{ t.question_count }}</td>
+              <td class="actions">
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('test_share', test_id=t.id) }}">
+                  {{ icon('qr', 14) }}<span>QR</span></a>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card-body">{{ empty_state('Тест алга.', 'Хичээл дотроос хос үүсгэнэ үү.', 'file') }}</div>
+    {% endif %}
+  </div>
+
+  {# ---- Сүүлийн оролдлогууд ---- #}
+  <div class="card">
+    <div class="card-head">
+      <h3 class="section-title">Сүүлийн оролдлогууд</h3>
+      <div class="spacer"></div>
+      <a class="btn btn-quiet btn-sm" href="{{ url_for('results_index') }}">Үр дүн</a>
+    </div>
+    {% if recent_attempts %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th class="wrap">Оюутан</th><th>Бүлэг</th><th>Төрөл</th><th class="n">Хувь</th></tr>
+          </thead>
+          <tbody>
+          {% for a in recent_attempts %}
+            <tr>
+              <td class="wrap">
+                {{ a.entered_full_name }}
+                <div class="hint">{{ a.student_code }} · {{ a.test_title }}</div>
+              </td>
+              <td>{{ a.class_group_name }}</td>
+              <td>{{ kind_badge(a.test_kind) }}</td>
+              <td class="n"><strong>{{ a.percent }}%</strong></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card-body">
+        {{ empty_state('Хариулт ирээгүй байна.',
+             'Тестийг нээж, QR холбоосыг оюутнуудад тараасны дараа энд харагдана.', 'inbox') }}
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endif %}
+
+{# ---- Хичээлүүд ---- #}
+<div class="card">
+  <div class="card-head">
+    <h3 class="section-title">Хичээлүүд</h3>
+    <div class="spacer"></div>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('courses') }}">Удирдах</a>
+  </div>
+  {% if courses %}
+    <div class="table-wrap">
+      <table class="data stacked">
+        <thead>
+          <tr>
+            <th>Код</th><th class="wrap">Нэр</th><th>Улирал</th>
+            <th class="n">Бүлэг</th><th class="n">Тест</th>
+            {% if current_user.role == 'admin' %}<th>Багш</th>{% endif %}
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for c in courses %}
+          <tr>
+            <td data-label="Код"><strong>{{ c.code }}</strong></td>
+            <td class="wrap" data-label="Нэр">{{ c.name }}</td>
+            <td data-label="Улирал">{{ c.semester }}</td>
+            <td class="n" data-label="Бүлэг">{{ c.group_count }}</td>
+            <td class="n" data-label="Тест">{{ c.test_count }}</td>
+            {% if current_user.role == 'admin' %}<td data-label="Багш">{{ c.teacher_name }}</td>{% endif %}
+            <td class="actions">
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('course_detail', course_id=c.id) }}">Нээх</a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card-body">
+      {% call empty_state('Хичээл бүртгэгдээгүй байна.',
+            'Хичээл нэмснээр ангийн бүлэг, тестийн хос үүсгэх боломжтой болно.', 'book') %}
+        <a class="btn" href="{{ url_for('courses') }}">{{ icon('plus', 16) }}<span>Хичээл нэмэх</span></a>
+      {% endcall %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

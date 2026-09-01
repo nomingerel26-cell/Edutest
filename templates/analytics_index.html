@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, empty_state with context %}
+{% block title %}Шинжилгээ — EduTest{% endblock %}
+{% block page_title %}Шинжилгээ{% endblock %}
+{% block breadcrumb %}<p class="crumb">Шинжилгээ хийх Pre/Post хосыг сонгоно уу</p>{% endblock %}
+
+{% block content %}
+{% if pairs %}
+<div class="grid grid-3">
+  {% for p in pairs %}
+    <div class="card" style="margin:0;">
+      <div class="card-body">
+        <div class="hint" style="margin:0 0 4px;">{{ p.course_code }} — {{ p.course_name }}</div>
+        <h3 class="section-title" style="margin-bottom:10px;">{{ p.name }}</h3>
+        <div class="btn-row" style="margin-bottom:14px;">
+          <span class="badge {{ 'open' if p.attempt_count else 'draft' }}">
+            {{ p.attempt_count }} оролдлого</span>
+        </div>
+        <a class="btn {{ '' if p.attempt_count else 'btn-ghost' }} btn-block"
+           href="{{ url_for('pair_comparison', pair_id=p.id) }}">
+          {{ icon('trend', 16) }}<span>Шинжилгээг нээх</span></a>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% else %}
+  {% call empty_state('Шинжлэх хос алга.',
+        'Оролт/Гаралтын хос үүсгэж, оюутнууд хариулт илгээсний дараа харьцуулсан шинжилгээ боломжтой болно.', 'trend') %}
+    <a class="btn" href="{{ url_for('courses') }}">{{ icon('book', 16) }}<span>Хичээл рүү очих</span></a>
+  {% endcall %}
+{% endif %}
+{% endblock %}

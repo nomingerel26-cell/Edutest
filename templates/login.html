@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon with context %}
+{% block title %}Нэвтрэх — EduTest{% endblock %}
+
+{% block content %}
+<div class="public-wrap">
+  <div style="text-align:center; margin-bottom: var(--sp-6);">
+    <span class="brand-mark" style="width:46px;height:46px;font-size:1.2rem;margin:0 auto 12px;">E</span>
+    <h2 style="margin:0;font-size:1.4rem;font-weight:650;">EduTest</h2>
+    <p class="hint" style="margin-top:4px;">Оролт/Гаралтын тестийн систем</p>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <form method="post" novalidate data-guard data-busy-label="Нэвтэрч байна…">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <div class="field">
+          <label for="email">Имэйл</label>
+          <div class="input-icon">
+            {{ icon('mail', 17) }}
+            <input type="email" id="email" name="email" value="{{ email }}"
+                   autocomplete="username" placeholder="bagsh@must.edu.mn" required autofocus>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="password">Нууц үг</label>
+          <div class="input-icon">
+            {{ icon('lock', 17) }}
+            <input type="password" id="password" name="password"
+                   autocomplete="current-password" required style="padding-right:42px;">
+            <button class="toggle-pw" type="button" data-toggle-password="password"
+                    aria-label="Нууц үгийг харуулах">
+              {{ icon('eye', 17) }}
+              <svg class="icon" width="17" height="17" style="display:none" aria-hidden="true"><use href="#icon-eye-off"></use></svg>
+            </button>
+          </div>
+        </div>
+
+        <button class="btn btn-block btn-lg" type="submit">Нэвтрэх</button>
+      </form>
+    </div>
+  </div>
+
+  {% if IS_DEV %}
+  <div class="card">
+    <div class="card-body">
+      <p class="hint" style="margin:0 0 8px;">
+        Хөгжүүлэлтийн горим. Жишээ өгөгдөл ачаалсан бол дараах бүртгэлээр нэвтэрнэ:
+      </p>
+      <dl class="kv">
+        <dt>Админ</dt><dd><code>admin@must.edu.mn</code> / <code>admin1234</code></dd>
+        <dt>Багш</dt><dd><code>saraa@must.edu.mn</code> / <code>demo1234</code></dd>
+      </dl>
+      <p class="hint">
+        Эдгээр нь <code>EDUTEST_ENV=production</code> үед харагдахгүй.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

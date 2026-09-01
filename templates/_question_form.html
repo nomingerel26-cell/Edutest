@@ -1,0 +1,109 @@
+{# =====================================================================
+   Асуулт үүсгэх/засах формын биет — test_detail.html ба
+   question_edit.html хоёулаа үүнийг ашиглана (нэг эх сурвалж).
+
+   Хүлээж авах хувьсагч: `form` (app.py-ийн _question_form-ын гаралт)
+
+   JavaScript унтарсан үед: гурван бүлэг талбар бүгд харагдана, аль ч
+   төрлийг сонгож илгээхэд сервер тал зөв боловсруулна.
+   ===================================================================== #}
+{% from "_macros.html" import icon with context %}
+
+<div class="form-section">
+  <h4>Асуултын төрөл</h4>
+  <p class="hint">Төрөл сонгоход доорх талбарууд өөрчлөгдөнө.</p>
+  <div class="chips" role="radiogroup" aria-label="Асуултын төрөл">
+    {% for t in QUESTION_TYPES %}
+      <label class="chip {{ 'active' if form.qtype == t }}" data-qtype-chip="{{ t }}">
+        <input type="radio" name="qtype" value="{{ t }}"
+               {% if form.qtype == t %}checked{% endif %}
+               style="position:absolute;opacity:0;width:0;height:0;">
+        {{ QUESTION_TYPE_LABELS[t] }}
+      </label>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="form-section">
+  <div class="field">
+    <label for="text">Асуултын текст <span class="req">*</span></label>
+    <textarea id="text" name="text" rows="2" required>{{ form.text }}</textarea>
+  </div>
+</div>
+
+{# ---------- Зүүн тал / сонголтууд ---------- #}
+<div class="form-section">
+  <h4 data-options-title>Хариултын сонголтууд</h4>
+  <p class="hint" data-options-hint></p>
+
+  <div class="form-row">
+    {% for key in OPTION_KEYS %}
+      <div class="field">
+        <label for="opt{{ key }}">{{ key }} <span class="req">*</span></label>
+        <input type="text" id="opt{{ key }}" name="option_{{ key|lower }}"
+               value="{{ form[key] }}" required>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+{# ---------- Нэг зөв хариулт ---------- #}
+<div class="form-section" data-qtype-panel="single">
+  <h4>Зөв хариулт</h4>
+  <p class="hint">Ганц зөв хариултыг сонгоно.</p>
+  <div class="field" style="max-width:220px;">
+    <select id="correct" name="correct_option">
+      {% for key in OPTION_KEYS %}
+        <option value="{{ key }}" {% if form.correct_option == key %}selected{% endif %}>{{ key }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+
+{# ---------- Олон зөв хариулт ---------- #}
+<div class="form-section" data-qtype-panel="multi">
+  <h4>Зөв хариултууд</h4>
+  <p class="hint">
+    Хамгийн багадаа 2, бүгдээс цөөн сонгоно. Оюутан <strong>бүх зөв
+    хариултыг яг таг</strong> сонгосон үед л балл авна — хэсэгчилсэн оноо байхгүй.
+  </p>
+  {% set picked = form.correct_option | option_set %}
+  <div style="display:flex;flex-wrap:wrap;gap:var(--sp-2);">
+    {% for key in OPTION_KEYS %}
+      <label class="opt {{ 'selected' if key in picked }}" style="flex:1 1 160px;margin:0;">
+        <input type="checkbox" name="correct_options" value="{{ key }}"
+               {% if key in picked %}checked{% endif %}>
+        <span class="opt-key">{{ key }}</span>
+        <span>сонголт зөв</span>
+      </label>
+    {% endfor %}
+  </div>
+</div>
+
+{# ---------- Харгалзуулах ---------- #}
+<div class="form-section" data-qtype-panel="match">
+  <h4>Харгалзах хосууд</h4>
+  <p class="hint">
+    Зүүн талын A, B, C, D-тэй харгалзах баруун талын утгыг бичнэ.
+    Оюутанд харуулахдаа баруун талыг <strong>автоматаар холино</strong> тул
+    зөв хариулт эгнээгээрээ таарахгүй. Бүх хос зөв үед л балл өгнө.
+  </p>
+  <div class="form-row">
+    {% for key in OPTION_KEYS %}
+      <div class="field">
+        <label for="match{{ key }}">{{ key }}-ийн хос <span class="req">*</span></label>
+        <input type="text" id="match{{ key }}" name="match_{{ key|lower }}"
+               value="{{ form['match_' ~ key] }}"
+               placeholder="{{ key }}-тай харгалзах">
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+{# ---------- Балл ---------- #}
+<div class="form-section">
+  <div class="field" style="max-width:220px;">
+    <label for="score">Балл <span class="req">*</span></label>
+    <input type="number" id="score" name="score" value="{{ form.score }}" min="1" required>
+  </div>
+</div>

@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, stat, empty_state, alert, match_badge, delta, delta_bar with context %}
+{% block title %}Шинжилгээ — {{ pair.name }}{% endblock %}
+{% block page_title %}{{ pair.name }}{% endblock %}
+{% block breadcrumb %}
+<p class="crumb">
+  <a href="{{ url_for('analytics') }}">Шинжилгээ</a> /
+  <a href="{{ url_for('course_detail', course_id=pair.course_id) }}">{{ pair.course_code }}</a> /
+  Pre/Post харьцуулалт
+</p>
+{% endblock %}
+
+{% block topbar_actions %}
+<div class="btn-row">
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('pair_comparison_csv', pair_id=pair.id) }}">
+    {{ icon('download', 14) }}<span>CSV татах</span></a>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('pair_comparison_xlsx', pair_id=pair.id) }}">
+    {{ icon('sheet', 14) }}<span>Excel татах</span></a>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('pair_report_docx', pair_id=pair.id) }}">
+    {{ icon('doc', 14) }}<span>Word тайлан татах</span></a>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if rows %}
+
+  {# ---------- Шүүлтүүр ---------- #}
+  <div class="card">
+    <form method="get" class="filterbar">
+      <div class="field">
+        <label for="group">Бүлэг</label>
+        <select id="group" name="group" onchange="this.form.submit()">
+          <option value="">Бүх бүлэг</option>
+          {% for gname in groups %}
+            <option value="{{ gname }}" {% if filter_group == gname %}selected{% endif %}>{{ gname }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="status">Тааралтын төлөв</label>
+        <select id="status" name="status" onchange="this.form.submit()">
+          <option value="">Бүгд</option>
+          <option value="matched" {% if filter_status == 'matched' %}selected{% endif %}>Зөвхөн тааруулсан</option>
+          <option value="unmatched" {% if filter_status == 'unmatched' %}selected{% endif %}>Зөвхөн таараагүй</option>
+        </select>
+      </div>
+      <div class="field">
+        <button class="btn btn-ghost" type="submit">Шүүх</button>
+      </div>
+      {% if filter_group or filter_status %}
+        <div class="field">
+          <a class="btn btn-quiet" href="{{ url_for('pair_comparison', pair_id=pair.id) }}">Цэвэрлэх</a>
+        </div>
+      {% endif %}
+      <div class="field" style="margin-left:auto;">
+        <p class="hint" style="margin:0;">{{ rows|length }} / {{ total_rows }} мөр</p>
+      </div>
+    </form>
+  </div>
+
+  {# ---------- Нэгтгэсэн үзүүлэлт ---------- #}
+  <div class="grid grid-stats" style="margin-bottom: var(--sp-4);">
+    {{ stat('Тааруулсан оюутан', summary.matched_count, accent=true) }}
+    {{ stat('Зөвхөн оролт', summary.pre_only_count, 'Гаралт өгөөгүй') }}
+    {{ stat('Зөвхөн гаралт', summary.post_only_count, 'Оролт өгөөгүй') }}
+    {{ stat('Нэрийн зөрчил', summary.conflict_count, 'Багш шалгах шаардлагатай') }}
+  </div>
+
+  <div class="grid grid-stats" style="margin-bottom: var(--sp-5);">
+    {{ stat('Оролтын дундаж', (summary.avg_pre ~ '%') if summary.avg_pre is not none else '—') }}
+    {{ stat('Гаралтын дундаж', (summary.avg_post ~ '%') if summary.avg_post is not none else '—') }}
+    <div class="stat {{ 'up' if summary.avg_delta and summary.avg_delta > 0 else ('down' if summary.avg_delta and summary.avg_delta < 0 else '') }}">
+      <div class="stat-label">Дундаж өсөлт</div>
+      <div class="stat-value">
+        {% if summary.avg_delta is none %}—{% else %}{{ '+' if summary.avg_delta > 0 }}{{ summary.avg_delta }}%{% endif %}
+      </div>
+      <div class="stat-note">Гаралт − Оролт</div>
+    </div>
+    {{ stat('Өссөн оюутны хувь',
+            ((summary.improved_count * 100 / summary.matched_count) | round(1) ~ '%')
+            if summary.matched_count else '—',
+            summary.improved_count ~ ' / ' ~ summary.matched_count) }}
+  </div>
+
+  {% if summary.conflict_count %}
+    {{ alert('warning',
+       'Ижил бүлэг, ижил оюутны кодоор өөр нэр бүртгэгдсэн ' ~ summary.conflict_count ~
+       ' мөр байна. Систем эдгээрийг автоматаар нэгтгээгүй — багш зөв нэрийг тодруулна уу.') }}
+  {% endif %}
+
+  {# ---------- График ---------- #}
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-head"><h3 class="section-title">Оролт ба Гаралтын дундаж</h3></div>
+      <div class="card-body"><div class="chart-box"><canvas id="chart-avg"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3 class="section-title">Ахицын ангилал</h3></div>
+      <div class="card-body"><div class="chart-box"><canvas id="chart-improve"></canvas></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3 class="section-title">Оюутан тус бүрийн Оролт/Гаралт</h3></div>
+    <div class="card-body"><div class="chart-box tall"><canvas id="chart-students"></canvas></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3 class="section-title">Онооны тархалт</h3></div>
+    <div class="card-body"><div class="chart-box"><canvas id="chart-dist"></canvas></div></div>
+  </div>
+
+  {# ---------- Хүснэгт ---------- #}
+  <div class="card">
+    <div class="card-head">
+      <h3 class="section-title">Харьцуулалтын хүснэгт</h3>
+      <div class="spacer"></div>
+      <span class="hint">
+        Ахисан {{ summary.improved_count }} · Өөрчлөлтгүй {{ summary.same_count }} ·
+        Буурсан {{ summary.declined_count }}
+      </span>
+    </div>
+    <div class="table-wrap">
+      <table class="data stacked">
+        <thead>
+          <tr>
+            <th class="n">№</th><th>Оюутны код</th><th class="wrap">Овог нэр</th><th>Бүлэг</th>
+            <th class="n">Оролт</th><th class="n">Гаралт</th><th class="n">Өөрчлөлт</th>
+            <th class="n">Өсөлтийн хувь</th><th>Тааралт</th><th>Огноо</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in rows %}
+          <tr>
+            <td class="n" data-label="№">{{ loop.index }}</td>
+            <td data-label="Код"><strong>{{ r.student_code }}</strong></td>
+            <td class="wrap" data-label="Овог нэр">
+              {{ r.full_name }}
+              {% if r.name_conflict %}
+                <span class="badge closed">Нэр зөрчилтэй</span>
+                <div class="hint">Бичигдсэн нэрс: {{ r.conflicting_names | join(' / ') }}</div>
+              {% endif %}
+            </td>
+            <td data-label="Бүлэг">{{ r.class_group_name }}</td>
+            <td class="n" data-label="Оролт">{{ (r.pre_percent ~ '%') if r.pre_percent is not none else '—' }}</td>
+            <td class="n" data-label="Гаралт">{{ (r.post_percent ~ '%') if r.post_percent is not none else '—' }}</td>
+            <td class="n" data-label="Өөрчлөлт">{{ delta_bar(r.delta_percent) }}</td>
+            <td class="n" data-label="Өсөлтийн хувь">
+              {% if r.delta_percent is not none and r.pre_percent %}
+                {{ delta((r.delta_percent * 100 / r.pre_percent) | round(1)) }}
+              {% else %}—{% endif %}
+            </td>
+            <td data-label="Тааралт">{{ match_badge(r.status) }}</td>
+            <td data-label="Огноо">{{ r.submitted_at[:10] if r.submitted_at else '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body" style="border-top:1px solid var(--border);">
+      <p class="hint" style="margin:0;">
+        Тааруулалтын түлхүүр: <strong>ангийн бүлэг + хэвийн болгосон оюутны код</strong>,
+        зөвхөн энэ тестийн хосын дотор. Имэйл тааруулалтад оролцохгүй.
+      </p>
+    </div>
+  </div>
+
+{% else %}
+  {% call empty_state(
+        'Харьцуулах өгөгдөл алга.' if not total_rows else 'Шүүлтүүрт тохирох мөр олдсонгүй.',
+        'Оролт болон Гаралтын тестийг нээж, оюутнууд хариултаа илгээсний дараа энэ хүснэгт автоматаар бөглөгдөнө.'
+        if not total_rows else 'Шүүлтүүрээ өөрчилж эсвэл цэвэрлэж үзнэ үү.', 'trend') %}
+    {% if total_rows %}
+      <a class="btn" href="{{ url_for('pair_comparison', pair_id=pair.id) }}">Шүүлтүүр цэвэрлэх</a>
+    {% elif tests %}
+      <div class="btn-row" style="justify-content:center;">
+        {% for kind, t in tests.items() %}
+          <a class="btn btn-ghost" href="{{ url_for('test_detail', test_id=t.id) }}">
+            {{ 'Оролтын тест' if kind == 'pre' else 'Гаралтын тест' }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endcall %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if rows %}
+{# Chart.js нь static/vendor/-т локалаар байна — интернет шаардахгүй. #}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script id="chart-data" type="application/json">{{ chart | tojson }}</script>
+<script>
+(function () {
+  var data = JSON.parse(document.getElementById('chart-data').textContent);
+  var css = getComputedStyle(document.documentElement);
+  var PRIMARY = css.getPropertyValue('--primary').trim() || '#4F46E5';
+  var SUCCESS = css.getPropertyValue('--success').trim() || '#0F766E';
+  var DANGER  = css.getPropertyValue('--danger').trim()  || '#B42318';
+  var MUTED   = css.getPropertyValue('--muted').trim()   || '#6B7793';
+  var GRID    = '#E3E7F0';
+
+  Chart.defaults.font.family = css.getPropertyValue('--font').trim() ||
+    '"Segoe UI", "Noto Sans", Arial, sans-serif';
+  Chart.defaults.color = MUTED;
+  Chart.defaults.maintainAspectRatio = false;
+  Chart.defaults.animation = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ? false : { duration: 400 };
+
+  var pctAxis = { beginAtZero: true, max: 100, grid: { color: GRID },
+                  ticks: { callback: function (v) { return v + '%'; } } };
+
+  // 1. Оролт vs Гаралтын дундаж
+  new Chart(document.getElementById('chart-avg'), {
+    type: 'bar',
+    data: {
+      labels: ['Оролт', 'Гаралт'],
+      datasets: [{
+        label: 'Дундаж хувь',
+        data: [data.avg_pre, data.avg_post],
+        backgroundColor: [PRIMARY, SUCCESS],
+        borderRadius: 6, barThickness: 74
+      }]
+    },
+    options: { plugins: { legend: { display: false } },
+               scales: { y: pctAxis, x: { grid: { display: false } } } }
+  });
+
+  // 2. Ахицын ангилал
+  new Chart(document.getElementById('chart-improve'), {
+    type: 'bar',
+    data: {
+      labels: ['Ахисан', 'Өөрчлөлтгүй', 'Буурсан'],
+      datasets: [{
+        label: 'Оюутны тоо',
+        data: data.improvement,
+        backgroundColor: [SUCCESS, MUTED, DANGER],
+        borderRadius: 6, barThickness: 54
+      }]
+    },
+    options: { plugins: { legend: { display: false } },
+               scales: { y: { beginAtZero: true, grid: { color: GRID },
+                              ticks: { precision: 0 } },
+                         x: { grid: { display: false } } } }
+  });
+
+  // 3. Оюутан тус бүрийн харьцуулалт
+  new Chart(document.getElementById('chart-students'), {
+    type: 'bar',
+    data: {
+      labels: data.labels,
+      datasets: [
+        { label: 'Оролт',  data: data.pre,  backgroundColor: PRIMARY, borderRadius: 4 },
+        { label: 'Гаралт', data: data.post, backgroundColor: SUCCESS, borderRadius: 4 }
+      ]
+    },
+    options: {
+      plugins: { legend: { position: 'top', labels: { boxWidth: 12, usePointStyle: true } } },
+      scales: { y: pctAxis, x: { grid: { display: false }, ticks: { autoSkip: false,
+                maxRotation: 90, minRotation: 45 } } }
+    }
+  });
+
+  // 4. Онооны тархалт
+  new Chart(document.getElementById('chart-dist'), {
+    type: 'bar',
+    data: {
+      labels: data.dist_labels,
+      datasets: [
+        { label: 'Оролт',  data: data.dist_pre,  backgroundColor: PRIMARY, borderRadius: 4 },
+        { label: 'Гаралт', data: data.dist_post, backgroundColor: SUCCESS, borderRadius: 4 }
+      ]
+    },
+    options: {
+      plugins: { legend: { position: 'top', labels: { boxWidth: 12, usePointStyle: true } },
+                 title: { display: true, text: 'Онооны бүсэд ногдох оюутны тоо', color: MUTED } },
+      scales: { y: { beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 } },
+                x: { grid: { display: false } } }
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

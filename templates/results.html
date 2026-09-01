@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, stat, empty_state, kind_badge, alert with context %}
+{% block title %}Үр дүн — {{ test.title }}{% endblock %}
+{% block page_title %}{{ test.title }} — үр дүн{% endblock %}
+{% block breadcrumb %}
+<p class="crumb">
+  <a href="{{ url_for('results_index') }}">Үр дүн</a> /
+  <a href="{{ url_for('course_detail', course_id=test.course_id) }}">{{ test.course_code }}</a> /
+  {{ test.title }}
+</p>
+{% endblock %}
+
+{% block topbar_actions %}
+<a class="btn btn-ghost btn-sm" href="{{ url_for('test_detail', test_id=test.id) }}">
+  {{ icon('back', 15) }}<span>Тест рүү</span></a>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="btn-row">
+    {{ kind_badge(test.kind) }}
+    <span class="badge neutral">{{ test.course_name }}</span>
+  </div>
+</div>
+
+{% if results %}
+  <div class="grid grid-stats" style="margin-bottom: var(--sp-5);">
+    {{ stat('Өгсөн оюутан', summary.count, accent=true) }}
+    {{ stat('Дундаж', summary.avg ~ '%') }}
+    {{ stat('Хамгийн өндөр', summary.max ~ '%') }}
+    {{ stat('Хамгийн бага', summary.min ~ '%') }}
+  </div>
+
+  {% if conflicts %}
+    {{ alert('warning',
+       'Нэрийн зөрчил: ' ~ conflicts|length ~ '. Ижил бүлэг, ижил оюутны кодоор өөр нэр бүртгэгдсэн байна. Систем чимээгүй нэгтгээгүй тул багш тулган шалгана уу.') }}
+  {% endif %}
+
+  <div class="card">
+    <div class="card-head">
+      <h3 class="section-title">Оюутны хүснэгт</h3>
+      <div class="spacer"></div>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('test_results_csv', test_id=test.id) }}">
+        {{ icon('download', 14) }}<span>CSV татах</span></a>
+    </div>
+    <div class="table-wrap">
+      <table class="data stacked">
+        <thead>
+          <tr><th class="n">№</th><th class="wrap">Овог нэр</th><th>Оюутны код</th><th>Бүлэг</th>
+            <th class="wrap">Имэйл</th><th class="n">Балл</th><th class="n">Хувь</th><th>Илгээсэн</th></tr>
+        </thead>
+        <tbody>
+        {% for r in results %}
+          <tr>
+            <td class="n" data-label="№">{{ loop.index }}</td>
+            <td class="wrap" data-label="Овог нэр">
+              {{ r.full_name }}
+              {% if r.name_conflict %}
+                <span class="badge closed">Нэр зөрчилтэй</span>
+                <div class="hint">Бичигдсэн нэрс: {{ r.conflicting_names | join(' / ') }}</div>
+              {% endif %}
+            </td>
+            <td data-label="Оюутны код">{{ r.student_code or '—' }}</td>
+            <td data-label="Бүлэг">{{ r.class_group_name }}</td>
+            <td class="wrap" data-label="Имэйл">{{ r.email or '—' }}</td>
+            <td class="n" data-label="Балл">{{ r.total_score }} / {{ r.max_score }}</td>
+            <td class="n" data-label="Хувь"><strong>{{ r.percent }}%</strong></td>
+            <td data-label="Илгээсэн">{{ r.submitted_at[:16].replace('T', ' ') }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% else %}
+  {% call empty_state('Одоогоор илгээсэн хариулт алга.',
+        'Тестийг «Нээлттэй» болгож, QR холбоосыг оюутнуудад тараана уу.', 'inbox') %}
+    <a class="btn" href="{{ url_for('test_share', test_id=test.id) }}">
+      {{ icon('qr', 16) }}<span>QR холбоос харах</span></a>
+  {% endcall %}
+{% endif %}
+{% endblock %}

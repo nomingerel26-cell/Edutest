@@ -1,0 +1,617 @@
+/* =====================================================================
+   EduTest — дизайн систем
+   Гадаад CDN, гадаад фонт ашиглаагүй. Chart.js нь static/vendor/-т
+   локалаар байрлана (интернетгүй танхимд ажиллана).
+   ===================================================================== */
+
+:root {
+  /* --- Өнгө: суурь --- */
+  --navy-900: #101B33;   /* хажуугийн цэс */
+  --navy-800: #1A2743;
+  --navy-700: #24365A;
+  --navy-400: #7D8FAE;
+
+  /* --- Өнгө: үйлдэл --- */
+  --primary:      #4F46E5;
+  --primary-700:  #4338CA;
+  --primary-050:  #EEF0FE;
+  --primary-200:  #C7CBF8;
+
+  --success:      #0F766E;
+  --success-050:  #E6F4F2;
+  --success-200:  #A9DDD6;
+
+  --warning:      #B45309;
+  --warning-050:  #FDF5E6;
+  --warning-200:  #F0DAA8;
+
+  --danger:       #B42318;
+  --danger-050:   #FDECEA;
+  --danger-200:   #F2C0BA;
+
+  /* --- Өнгө: гадаргуу ба текст --- */
+  --bg:        #F5F6FB;
+  --surface:   #FFFFFF;
+  --surface-2: #FAFBFE;
+  --border:    #E3E7F0;
+  --border-2:  #D3D9E6;
+
+  --text:    #16203A;
+  --text-2:  #414E6C;
+  --muted:   #6B7793;
+
+  /* --- Хэмжээс --- */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+
+  --radius:    12px;
+  --radius-sm: 8px;
+  --radius-xs: 6px;
+
+  --shadow-1: 0 1px 2px rgba(16, 27, 51, .05);
+  --shadow-2: 0 4px 14px rgba(16, 27, 51, .08);
+  --shadow-3: 0 18px 44px rgba(16, 27, 51, .18);
+
+  --sidebar-w: 248px;
+
+  /* Кирилл үсэг найдвартай гарах системийн фонтын өрөлт */
+  --font: "Segoe UI", "Noto Sans", "Helvetica Neue", "Arial", "Liberation Sans", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+input, select, button, textarea { font: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* Оноо, хувь, тоон багана — цифр тэгшилнэ */
+.num, td.n, th.n, .stat-value, table.data td { font-variant-numeric: tabular-nums; }
+
+/* =====================================================================
+   БҮРХҮҮЛ — хажуугийн цэс + агуулга
+   ===================================================================== */
+.shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: var(--sidebar-w);
+  flex: 0 0 var(--sidebar-w);
+  background: var(--navy-900);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-5) var(--sp-3);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 var(--sp-3) var(--sp-5);
+  color: #fff; font-weight: 700; font-size: 1.05rem;
+}
+.sidebar-brand:hover { text-decoration: none; }
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 9px; flex: 0 0 34px;
+  background: var(--primary); color: #fff;
+  display: grid; place-items: center; font-size: .95rem; font-weight: 700;
+}
+.brand-sub { display: block; font-size: .7rem; font-weight: 500; color: var(--navy-400); letter-spacing: .01em; }
+
+.sidebar-nav { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+.sidebar-group {
+  padding: var(--sp-5) var(--sp-3) var(--sp-2);
+  font-size: .72rem; font-weight: 600; color: var(--navy-400);
+}
+.nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px var(--sp-3); border-radius: var(--radius-sm);
+  color: #B6C2D8; font-size: .9rem; font-weight: 500;
+}
+.nav-link:hover { background: var(--navy-800); color: #fff; text-decoration: none; }
+.nav-link.active { background: var(--navy-700); color: #fff; font-weight: 600; }
+.nav-link .icon { flex: 0 0 18px; opacity: .9; }
+
+.sidebar-foot {
+  margin-top: auto; padding-top: var(--sp-4);
+  border-top: 1px solid var(--navy-800);
+}
+.who { padding: 0 var(--sp-3) var(--sp-3); }
+.who-name { font-size: .87rem; font-weight: 600; color: #fff; }
+.who-role { font-size: .72rem; color: var(--navy-400); }
+.sidebar-foot .btn { width: 100%; }
+
+/* Гар утасны drawer */
+.sidebar-backdrop { display: none; }
+
+.main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: var(--sp-3) var(--sp-6);
+  display: flex; align-items: center; gap: var(--sp-3);
+  position: sticky; top: 0; z-index: 30;
+}
+.topbar h1 { font-size: 1.06rem; font-weight: 600; margin: 0; }
+.topbar .crumb { font-size: .78rem; color: var(--muted); margin: 0; }
+.topbar .spacer { margin-left: auto; }
+
+.hamburger {
+  display: none; background: none; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 7px 9px; cursor: pointer; color: var(--text);
+}
+
+.content { padding: var(--sp-6); max-width: 1220px; width: 100%; }
+
+/* Нэвтрэлтгүй нийтийн хуудас (оюутан, login) */
+.public-wrap { max-width: 460px; margin: 0 auto; padding: 6vh var(--sp-4) var(--sp-10); }
+.public-wide { max-width: 720px; }
+
+/* =====================================================================
+   ГАРЧИГ
+   ===================================================================== */
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-3); margin-bottom: var(--sp-5); }
+.page-head h2 { font-size: 1.35rem; font-weight: 650; margin: 0 0 2px; letter-spacing: -.01em; }
+.page-head .sub { font-size: .86rem; color: var(--muted); margin: 0; }
+.page-head .actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+.section-title { font-size: .98rem; font-weight: 650; margin: 0; }
+
+/* =====================================================================
+   КАРТ
+   ===================================================================== */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  margin-bottom: var(--sp-5);
+  overflow: hidden;
+}
+.card-head {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+}
+.card-head .spacer { margin-left: auto; }
+.card-body { padding: var(--sp-5); }
+.card-body > :first-child { margin-top: 0; }
+.card-body > :last-child { margin-bottom: 0; }
+
+.grid { display: grid; gap: var(--sp-4); }
+.grid-stats { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.grid-3 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+
+/* Тоон үзүүлэлт */
+.stat {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: var(--sp-4) var(--sp-5);
+  box-shadow: var(--shadow-1);
+}
+.stat-label { font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.stat-value { font-size: 1.75rem; font-weight: 650; line-height: 1.2; margin-top: 6px; letter-spacing: -.02em; }
+.stat-note { font-size: .76rem; color: var(--muted); margin-top: 2px; }
+.stat.accent { border-left: 3px solid var(--primary); }
+.stat.up   .stat-value { color: var(--success); }
+.stat.down .stat-value { color: var(--danger); }
+
+/* =====================================================================
+   ТОВЧ
+   ===================================================================== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 9px 15px; border-radius: var(--radius-sm);
+  border: 1px solid transparent; background: var(--primary); color: #fff;
+  font-size: .88rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: background .12s ease, border-color .12s ease;
+}
+.btn:hover { background: var(--primary-700); text-decoration: none; color: #fff; }
+.btn .icon { flex: 0 0 auto; }
+
+.btn-ghost { background: var(--surface); color: var(--text); border-color: var(--border-2); font-weight: 500; }
+.btn-ghost:hover { background: var(--surface-2); border-color: var(--primary); color: var(--primary); }
+
+.btn-quiet { background: transparent; color: var(--text-2); border-color: transparent; font-weight: 500; }
+.btn-quiet:hover { background: var(--surface-2); color: var(--text); }
+
+.btn-danger { background: var(--surface); color: var(--danger); border-color: var(--danger-200); font-weight: 600; }
+.btn-danger:hover { background: var(--danger-050); color: var(--danger); border-color: var(--danger); }
+
+.btn-dark { background: var(--navy-900); }
+.btn-dark:hover { background: var(--navy-700); }
+
+.btn-sm { padding: 5px 10px; font-size: .8rem; border-radius: var(--radius-xs); }
+.btn-block { width: 100%; }
+.btn-lg { padding: 13px 20px; font-size: .96rem; }
+.btn:disabled, .btn[disabled] {
+  background: #EDF0F6; color: #98A2B8; border-color: var(--border);
+  cursor: not-allowed;
+}
+.btn-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+form.inline { display: inline; }
+
+/* Хажуугийн цэсний гарах товч */
+.sidebar .btn-ghost {
+  background: transparent; color: #B6C2D8; border-color: var(--navy-700);
+}
+.sidebar .btn-ghost:hover { background: var(--navy-800); color: #fff; border-color: var(--navy-700); }
+
+/* =====================================================================
+   ФОРМ
+   ===================================================================== */
+.field { margin-bottom: var(--sp-4); }
+.field label, .label {
+  display: block; font-size: .82rem; font-weight: 600;
+  color: var(--text-2); margin-bottom: 5px;
+}
+.req { color: var(--danger); font-weight: 700; }
+
+.input, input[type=text], input[type=email], input[type=password],
+input[type=number], input[type=search], select, textarea {
+  width: 100%; padding: 9px 12px;
+  border: 1px solid var(--border-2); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text); font-size: .92rem;
+}
+textarea { line-height: 1.5; resize: vertical; }
+.input:focus, input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-050);
+}
+input::placeholder, textarea::placeholder { color: #9AA4BC; }
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B7793' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center;
+  padding-right: 32px;
+}
+
+.input-icon { position: relative; }
+.input-icon > .icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); pointer-events: none;
+}
+.input-icon input { padding-left: 38px; }
+.input-icon .toggle-pw {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; padding: 6px; cursor: pointer; color: var(--muted);
+  border-radius: var(--radius-xs);
+}
+.input-icon .toggle-pw:hover { color: var(--text); background: var(--surface-2); }
+
+.form-row { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.hint { font-size: .78rem; color: var(--muted); margin: 5px 0 0; }
+.form-section { border-top: 1px solid var(--border); padding-top: var(--sp-5); margin-top: var(--sp-5); }
+.form-section:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+.form-section > h4 { font-size: .9rem; font-weight: 650; margin: 0 0 4px; }
+.form-section > .hint { margin-bottom: var(--sp-4); }
+
+fieldset { border: none; margin: 0; padding: 0; }
+
+/* =====================================================================
+   МЭДЭГДЭЛ (alert / toast)
+   ===================================================================== */
+.alert {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 11px 14px; border-radius: var(--radius-sm);
+  border: 1px solid; font-size: .87rem; margin-bottom: var(--sp-3);
+}
+.alert .icon { flex: 0 0 18px; margin-top: 1px; }
+.alert.success { background: var(--success-050); border-color: var(--success-200); color: #0B5A54; }
+.alert.error   { background: var(--danger-050);  border-color: var(--danger-200);  color: var(--danger); }
+.alert.warning { background: var(--warning-050); border-color: var(--warning-200); color: var(--warning); }
+.alert.info    { background: var(--primary-050); border-color: var(--primary-200); color: var(--primary-700); }
+
+.toast-stack {
+  position: fixed; top: 16px; right: 16px; z-index: 200;
+  display: flex; flex-direction: column; gap: 8px;
+  max-width: min(400px, calc(100vw - 32px));
+}
+.toast {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--muted);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-2);
+  padding: 11px 14px; font-size: .87rem;
+}
+.toast.success { border-left-color: var(--success); }
+.toast.error   { border-left-color: var(--danger); }
+.toast.warning { border-left-color: var(--warning); }
+.toast .close { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--muted); padding: 0 2px; }
+.toast.hide { opacity: 0; transform: translateX(12px); transition: opacity .25s, transform .25s; }
+
+/* =====================================================================
+   ХҮСНЭГТ
+   ===================================================================== */
+.table-wrap { overflow-x: auto; }
+table.data { width: 100%; border-collapse: collapse; font-size: .87rem; }
+table.data th, table.data td {
+  padding: 10px 14px; text-align: left;
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+table.data thead th {
+  background: var(--surface-2); color: var(--muted);
+  font-size: .78rem; font-weight: 600;
+}
+table.data tbody tr:hover { background: var(--surface-2); }
+table.data tbody tr:last-child td { border-bottom: none; }
+table.data td.wrap, table.data th.wrap { white-space: normal; min-width: 180px; }
+table.data td.n, table.data th.n { text-align: right; }
+table.data td.actions { width: 1%; }
+
+/* =====================================================================
+   ТӨЛӨВИЙН ТЭМДЭГ
+   ===================================================================== */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 9px; border-radius: 999px;
+  font-size: .75rem; font-weight: 600; border: 1px solid; white-space: nowrap;
+}
+.badge.draft   { background: #F1F3F9; color: var(--muted);      border-color: var(--border-2); }
+.badge.open    { background: var(--success-050); color: var(--success); border-color: var(--success-200); }
+.badge.closed  { background: var(--danger-050);  color: var(--danger);  border-color: var(--danger-200); }
+.badge.pre     { background: var(--primary-050); color: var(--primary-700); border-color: var(--primary-200); }
+.badge.post    { background: #F4ECFD; color: #6D28D9; border-color: #DDCAF7; }
+.badge.matched { background: var(--success-050); color: var(--success); border-color: var(--success-200); }
+.badge.partial { background: var(--warning-050); color: var(--warning); border-color: var(--warning-200); }
+.badge.neutral { background: #F1F3F9; color: var(--muted); border-color: var(--border-2); }
+.badge.dot::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.delta-up   { color: var(--success); font-weight: 700; }
+.delta-down { color: var(--danger);  font-weight: 700; }
+.delta-flat { color: var(--muted);   font-weight: 600; }
+
+/* Ахицын диверген баганан индикатор — энэ системийн гол харагдац */
+.deltabar { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.deltabar-track { position: relative; width: 76px; height: 7px; background: #EDF0F6; border-radius: 4px; flex: 0 0 76px; }
+.deltabar-track::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--border-2); }
+.deltabar-fill { position: absolute; top: 0; height: 100%; border-radius: 4px; }
+.deltabar-fill.pos { left: 50%; background: var(--success); }
+.deltabar-fill.neg { right: 50%; background: var(--danger); }
+.deltabar-label { min-width: 46px; text-align: right; font-variant-numeric: tabular-nums; font-size: .85rem; }
+
+/* =====================================================================
+   ХООСОН ба АЛДААНЫ ТӨЛӨВ
+   ===================================================================== */
+.empty {
+  text-align: center; padding: var(--sp-10) var(--sp-5);
+  border: 1px dashed var(--border-2); border-radius: var(--radius);
+  background: var(--surface-2); color: var(--muted);
+}
+.empty .icon { color: var(--border-2); margin-bottom: var(--sp-3); }
+.empty strong { display: block; color: var(--text); font-size: .98rem; margin-bottom: 4px; font-weight: 650; }
+.empty p { margin: 0 auto var(--sp-4); max-width: 46ch; font-size: .87rem; }
+.empty > :last-child { margin-bottom: 0; }
+
+.error-page { text-align: center; padding: 8vh var(--sp-5); }
+.error-code { font-size: 3.6rem; font-weight: 700; color: var(--primary); letter-spacing: -.03em; line-height: 1; }
+
+/* Ачаалж буй төлөв */
+.spinner {
+  width: 26px; height: 26px; border: 3px solid var(--primary-200);
+  border-top-color: var(--primary); border-radius: 50%;
+  animation: spin .8s linear infinite; margin: 0 auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.is-busy { opacity: .6; pointer-events: none; }
+
+/* =====================================================================
+   MODAL
+   ===================================================================== */
+dialog.modal {
+  border: none; border-radius: var(--radius); padding: 0;
+  box-shadow: var(--shadow-3); max-width: 440px; width: calc(100vw - 32px);
+  color: var(--text); background: var(--surface);
+}
+dialog.modal::backdrop { background: rgba(16, 27, 51, .45); }
+.modal-head { padding: var(--sp-5) var(--sp-5) 0; font-size: 1rem; font-weight: 650; }
+.modal-body { padding: var(--sp-3) var(--sp-5); font-size: .89rem; color: var(--text-2); }
+.modal-foot { padding: var(--sp-4) var(--sp-5); display: flex; gap: var(--sp-2); justify-content: flex-end; border-top: 1px solid var(--border); margin-top: var(--sp-3); }
+
+/* =====================================================================
+   ХАЙЛТ / ШҮҮЛТҮҮРИЙН МӨР
+   ===================================================================== */
+.filterbar {
+  display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: flex-end;
+  padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.filterbar .field { margin-bottom: 0; }
+.filterbar .grow { flex: 1 1 200px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border-2);
+  background: var(--surface); font-size: .8rem; font-weight: 500; color: var(--text-2); cursor: pointer;
+}
+.chip:hover { border-color: var(--primary); color: var(--primary); text-decoration: none; }
+.chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* =====================================================================
+   АСУУЛТ / ТЕСТ
+   ===================================================================== */
+.q-card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: var(--sp-4); margin-bottom: var(--sp-3); background: var(--surface);
+}
+.q-head { display: flex; gap: 10px; align-items: baseline; margin-bottom: var(--sp-3); font-weight: 600; }
+.q-num {
+  flex: 0 0 26px; height: 26px; border-radius: 50%;
+  background: var(--primary-050); color: var(--primary-700);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .78rem; font-weight: 700; align-self: flex-start;
+}
+.q-score { margin-left: auto; font-size: .78rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
+
+.opt {
+  display: flex; gap: 11px; align-items: flex-start;
+  padding: 10px 13px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); margin-bottom: 7px;
+  background: var(--surface); cursor: pointer; font-size: .92rem;
+}
+.opt:last-child { margin-bottom: 0; }
+.opt:hover { border-color: var(--primary-200); background: var(--primary-050); }
+.opt input { position: absolute; opacity: 0; width: 0; height: 0; }
+.opt-key {
+  flex: 0 0 26px; width: 26px; height: 26px; border-radius: 50%;
+  background: #EDF0F6; color: var(--muted);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .78rem; font-weight: 700;
+}
+.opt.selected { border-color: var(--primary); background: var(--primary-050); }
+.opt.selected .opt-key { background: var(--primary); color: #fff; }
+.opt.correct { border-color: var(--success-200); background: var(--success-050); }
+.opt.correct .opt-key { background: var(--success); color: #fff; }
+.opt.wrong { border-color: var(--danger-200); background: var(--danger-050); }
+.opt.wrong .opt-key { background: var(--danger); color: #fff; }
+.opt-tag { margin-left: auto; font-size: .76rem; font-weight: 600; white-space: nowrap; }
+
+/* Явцын мөр */
+.progress-wrap { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: var(--sp-3) 0; }
+.progress-meta { display: flex; justify-content: space-between; font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
+.progress { height: 6px; background: #E4E8F2; border-radius: 4px; overflow: hidden; }
+.progress-bar { height: 100%; background: var(--primary); border-radius: 4px; transition: width .2s ease; }
+
+/* Оюутны үр дүн */
+.score-hero { text-align: center; padding: var(--sp-6) var(--sp-5); }
+.score-ring {
+  width: 128px; height: 128px; margin: 0 auto var(--sp-4);
+  border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--primary) calc(var(--pct) * 1%), #E7EAF4 0);
+}
+.score-ring-inner {
+  width: 104px; height: 104px; border-radius: 50%; background: var(--surface);
+  display: grid; place-items: center; align-content: center;
+}
+.score-pct { font-size: 1.9rem; font-weight: 700; line-height: 1; letter-spacing: -.02em; }
+.score-of { font-size: .78rem; color: var(--muted); margin-top: 3px; }
+
+/* =====================================================================
+   QR / ХУВААЛЦАХ
+   ===================================================================== */
+.qr-panel { display: flex; flex-wrap: wrap; gap: var(--sp-6); align-items: flex-start; }
+.qr-box {
+  flex: 0 0 auto; background: #fff; padding: var(--sp-4);
+  border: 1px solid var(--border); border-radius: var(--radius); text-align: center;
+}
+.qr-box svg, .qr-box img { display: block; width: 240px; height: 240px; }
+.qr-caption { font-family: var(--font-mono); font-size: .8rem; margin-top: var(--sp-3); color: var(--text-2); }
+.qr-side { flex: 1 1 280px; min-width: 0; }
+
+.copybox { display: flex; gap: var(--sp-2); align-items: stretch; }
+.copybox input {
+  font-family: var(--font-mono); font-size: .82rem; background: var(--surface-2);
+}
+
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 8px var(--sp-4); font-size: .87rem; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-weight: 500; }
+
+/* Графикийн сав */
+.chart-box { position: relative; height: 300px; }
+.chart-box.tall { height: 380px; }
+
+/* =====================================================================
+   ХЭВЛЭХ
+   ===================================================================== */
+@media print {
+  .sidebar, .topbar, .no-print, .toast-stack { display: none !important; }
+  body { background: #fff; }
+  .content { padding: 0; max-width: none; }
+  .card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
+  .qr-box svg, .qr-box img { width: 300px; height: 300px; }
+  a { color: #000; }
+}
+
+/* =====================================================================
+   RESPONSIVE
+   ===================================================================== */
+@media (max-width: 1000px) {
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; z-index: 60;
+    transform: translateX(-100%); transition: transform .22s ease;
+    box-shadow: var(--shadow-3);
+  }
+  body.nav-open .sidebar { transform: translateX(0); }
+  body.nav-open .sidebar-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 50;
+    background: rgba(16, 27, 51, .45);
+  }
+  .hamburger { display: inline-flex; }
+  .content { padding: var(--sp-4); }
+  .topbar { padding: var(--sp-3) var(--sp-4); }
+}
+
+@media (max-width: 640px) {
+  body { font-size: 14.5px; }
+  .page-head h2 { font-size: 1.15rem; }
+  .page-head .actions { margin-left: 0; width: 100%; }
+  .card-body, .card-head, .filterbar { padding: var(--sp-4); }
+  .stat-value { font-size: 1.5rem; }
+  .toast-stack { left: 12px; right: 12px; max-width: none; }
+
+  /* Хүснэгтийг картан харагдац болгоно */
+  table.stacked thead { display: none; }
+  table.stacked, table.stacked tbody, table.stacked tr, table.stacked td { display: block; width: 100%; }
+  table.stacked tr {
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    margin-bottom: var(--sp-3); padding: var(--sp-2) 0; background: var(--surface);
+  }
+  table.stacked td {
+    border: none; white-space: normal; display: flex; gap: var(--sp-4);
+    justify-content: space-between; align-items: baseline; padding: 6px var(--sp-4);
+    text-align: right;
+  }
+  table.stacked td::before {
+    content: attr(data-label); color: var(--muted); font-size: .78rem;
+    font-weight: 600; text-align: left; flex: 0 0 auto;
+  }
+  table.stacked td.actions { justify-content: flex-start; padding-top: var(--sp-3); }
+  table.stacked td.actions::before { display: none; }
+}
+
+/* =====================================================================
+   ХАРГАЛЗУУЛАХ АСУУЛТ
+   ===================================================================== */
+.match-right {
+  display: grid; gap: 6px; margin-bottom: var(--sp-4);
+  padding: var(--sp-3); border-radius: var(--radius-sm);
+  background: var(--surface-2); border: 1px dashed var(--border-2);
+}
+.match-item { display: flex; gap: 10px; align-items: flex-start; font-size: .9rem; }
+.match-item .opt-key { background: var(--navy-900); color: #fff; }
+
+.match-row {
+  display: flex; gap: 10px; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.match-row:last-child { border-bottom: none; }
+.match-label { flex: 1 1 auto; font-size: .9rem; min-width: 0; }
+.match-row select { flex: 0 0 78px; width: 78px; }
+
+/* Асуултын төрөл сонгох chip нь label тул байрлалыг тохируулна */
+.chip { position: relative; display: inline-flex; align-items: center; }

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, status_badge, kind_badge, alert with context %}
+{% block title %}QR холбоос — {{ test.title }}{% endblock %}
+{% block page_title %}Оюутанд илгээх холбоос{% endblock %}
+{% block breadcrumb %}
+<p class="crumb">
+  <a href="{{ url_for('tests_index') }}">Тестүүд</a> /
+  <a href="{{ url_for('test_detail', test_id=test.id) }}">{{ test.title }}</a> / QR
+</p>
+{% endblock %}
+
+{% block topbar_actions %}
+<a class="btn btn-ghost btn-sm no-print" href="{{ url_for('test_detail', test_id=test.id) }}">
+  {{ icon('back', 15) }}<span>Тест рүү буцах</span></a>
+{% endblock %}
+
+{% block content %}
+
+{% if test.status != 'open' %}
+  {{ alert('warning', 'Энэ тест ' ~ ('ноорог' if test.status == 'draft' else 'хаагдсан') ~
+           ' төлөвт байна. Холбоос болон QR ажиллахгүй — эхлээд тестийг «Нээх» шаардлагатай.') }}
+{% elif not question_count %}
+  {{ alert('warning', 'Энэ тестэд асуулт байхгүй байна. Оюутан нэвтэрч чадахгүй.') }}
+{% endif %}
+
+<div class="card">
+  <div class="card-body">
+    <div class="qr-panel">
+
+      <div class="qr-box">
+        <img src="{{ url_for('test_qr_svg', test_id=test.id) }}"
+             alt="{{ test.title }} тестийн QR код" width="240" height="240">
+        <div class="qr-caption">{{ test.share_code }}</div>
+      </div>
+
+      <div class="qr-side">
+        <h3 class="section-title" style="margin-bottom:4px;">{{ test.title }}</h3>
+        <div class="btn-row" style="margin-bottom: var(--sp-4);">
+          {{ kind_badge(test.kind) }}
+          {{ status_badge(test.status) }}
+          <span class="badge neutral">{{ question_count }} асуулт</span>
+        </div>
+
+        <dl class="kv" style="margin-bottom: var(--sp-5);">
+          <dt>Хичээл</dt><dd>{{ test.course_name }} ({{ test.course_code }})</dd>
+          <dt>Бүлэг</dt><dd>{{ test.class_group_name or 'Бүх бүлэг' }}</dd>
+          {% if test.pair_name %}<dt>Хос</dt><dd>{{ test.pair_name }}</dd>{% endif %}
+          <dt>Үүсгэсэн</dt><dd>{{ test.created_at[:10] }}</dd>
+        </dl>
+
+        <div class="field no-print">
+          <label for="share-url">Оюутанд илгээх холбоос</label>
+          <div class="copybox">
+            <input type="text" id="share-url" value="{{ share_url }}" readonly
+                   onclick="this.select()">
+            <button class="btn btn-ghost" type="button"
+                    data-copy data-copy-from="share-url">
+              {{ icon('copy', 16) }}<span>Хуулах</span>
+            </button>
+          </div>
+          <p class="hint">
+            Оюутан нэвтрэх шаардлагагүй. Энэ холбоосыг нээгээд овог нэр, оюутны код,
+            бүлгээ оруулаад шууд тест эхлүүлнэ.
+          </p>
+        </div>
+
+        <div class="btn-row no-print">
+          <a class="btn btn-ghost" href="{{ url_for('test_qr_svg', test_id=test.id, download=1) }}">
+            {{ icon('download', 16) }}<span>QR татах (SVG)</span></a>
+          <button class="btn btn-ghost" type="button" onclick="window.print()">
+            {{ icon('print', 16) }}<span>QR хэвлэх</span></button>
+          <a class="btn btn-ghost" href="{{ share_url }}" target="_blank" rel="noopener">
+            {{ icon('link', 16) }}<span>Урьдчилан үзэх</span></a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="card no-print">
+  <div class="card-body">
+    <h4 style="margin:0 0 6px;font-size:.92rem;font-weight:650;">Хэрхэн ашиглах вэ</h4>
+    <ol style="margin:0;padding-left:20px;color:var(--text-2);font-size:.88rem;line-height:1.7;">
+      <li>Тестийг <strong>«Нээлттэй»</strong> төлөвт оруулна.</li>
+      <li>QR-г танхимд проектороор гаргах эсвэл хэвлэж тараана.</li>
+      <li>Оюутан утсаараа уншуулаад овог нэр, оюутны код, бүлгээ оруулна.</li>
+      <li>Тест дуусмагц <strong>«Хаах»</strong> товчийг дарж шинэ хариулт хүлээж авахаа зогсооно.</li>
+    </ol>
+    <p class="hint">
+      QR нь энэ сервер ажиллаж буй хаягаар үүсдэг. <code>localhost</code>-оор нээсэн бол
+      QR зөвхөн энэ компьютер дээр ажиллана — утаснаас турших бол серверийг
+      <code>HOST=0.0.0.0</code> болгож, сүлжээний IP хаягаар нээнэ үү.
+    </p>
+  </div>
+</div>
+{% endblock %}

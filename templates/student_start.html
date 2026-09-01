@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, kind_badge with context %}
+{% block title %}{{ test.title }} — бүртгэл{% endblock %}
+
+{% block content %}
+<div class="public-wrap">
+
+  <div style="text-align:center; margin-bottom: var(--sp-5);">
+    <span class="brand-mark" style="width:42px;height:42px;margin:0 auto 10px;">E</span>
+    <h2 style="margin:0;font-size:1.2rem;font-weight:650;">{{ test.title }}</h2>
+    <p class="hint" style="margin-top:6px;">
+      {{ test.course_name }} ({{ test.course_code }})
+    </p>
+    <div class="btn-row" style="justify-content:center;margin-top:10px;">
+      {{ kind_badge(test.kind) }}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="alert info" style="margin-bottom: var(--sp-5);">
+        {{ icon('info') }}
+        <div>
+          Оролт болон Гаралтын дүнг тааруулахын тулд
+          <strong>оюутны код ба ангийн бүлгээ хоёр тест дээр ижил</strong> оруулна уу.
+          Том/жижиг үсэг, илүү зай хамаарахгүй.
+        </div>
+      </div>
+
+      <form method="post" novalidate data-guard data-busy-label="Эхлүүлж байна…">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <div class="field">
+          <label for="full_name">Овог нэр <span class="req">*</span></label>
+          <input type="text" id="full_name" name="full_name" value="{{ form.full_name }}"
+                 placeholder="Батын Болд" autocomplete="name" required autofocus>
+        </div>
+
+        <div class="field">
+          <label for="student_code">Оюутны код <span class="req">*</span></label>
+          <input type="text" id="student_code" name="student_code" value="{{ form.student_code }}"
+                 placeholder="B230123" autocomplete="off" required>
+          <p class="hint">Оролт/Гаралтыг тааруулах түлхүүр. Оюутны үнэмлэх дээрх кодоо бичнэ үү.</p>
+        </div>
+
+        <div class="field">
+          <label for="class_group_id">Ангийн бүлэг <span class="req">*</span></label>
+          <select id="class_group_id" name="class_group_id" required>
+            <option value="">Сонгоно уу</option>
+            {% for gr in groups %}
+              <option value="{{ gr.id }}"
+                {% if form.class_group_id == gr.id|string %}selected{% endif %}>{{ gr.name }}</option>
+            {% endfor %}
+          </select>
+          {% if not groups %}
+            <p class="hint">Бүлэг бүртгэгдээгүй байна — багштайгаа холбогдоно уу.</p>
+          {% endif %}
+        </div>
+
+        <div class="field">
+          <label for="email">Имэйл <span class="hint" style="display:inline;font-weight:500;">(заавал биш)</span></label>
+          <div class="input-icon">
+            {{ icon('mail', 17) }}
+            <input type="email" id="email" name="email" value="{{ form.email }}"
+                   placeholder="bold@must.edu.mn" autocomplete="email">
+          </div>
+          <p class="hint">Зөвхөн харуулах зориулалттай. Хоосон орхиж болно — тааруулалтад нөлөөлөхгүй.</p>
+        </div>
+
+        <button class="btn btn-block btn-lg" type="submit" {% if not groups %}disabled{% endif %}>
+          Тест эхлүүлэх
+        </button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon with context %}
+{% block title %}Алдаа {{ code }} — EduTest{% endblock %}
+{% block page_title %}Алдаа{% endblock %}
+
+{% block content %}
+<div class="{{ '' if current_user else 'public-wrap' }}">
+  <div class="card">
+    <div class="card-body error-page">
+      <div class="error-code">{{ code }}</div>
+      <p style="max-width:44ch;margin:12px auto 20px;color:var(--text-2);">{{ message }}</p>
+      {% if current_user %}
+        <a class="btn" href="{{ url_for('dashboard') }}">{{ icon('back', 16) }}<span>Хяналтын самбар руу</span></a>
+      {% else %}
+        <a class="btn" href="{{ url_for('login') }}">{{ icon('back', 16) }}<span>Нэвтрэх хуудас руу</span></a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

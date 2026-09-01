@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, kind_badge with context %}
+{% block title %}{{ test.title }}{% endblock %}
+
+{% block content %}
+<div class="public-wrap public-wide">
+
+  <div style="margin-bottom: var(--sp-3);">
+    <h2 style="margin:0;font-size:1.15rem;font-weight:650;">{{ test.title }}</h2>
+    <p class="hint" style="margin-top:4px;">
+      {{ attempt.entered_full_name }} · {{ attempt.student_code or '—' }}
+    </p>
+  </div>
+
+  {# Явцын мөр — гүйлгэх үед дээр наалдана #}
+  <div class="progress-wrap">
+    <div class="progress-meta">
+      <span>Хариулсан: <strong data-progress-count>0 / {{ questions|length }}</strong></span>
+      <span>Нийт {{ questions|length }} асуулт</span>
+    </div>
+    <div class="progress" role="progressbar" aria-label="Тестийн явц"
+         aria-valuemin="0" aria-valuemax="{{ questions|length }}">
+      <div class="progress-bar" data-progress-bar style="width:0"></div>
+    </div>
+  </div>
+
+  <form method="post" novalidate data-take-form data-total="{{ questions|length }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    {% for q in questions %}
+      {% set qt = question_type(q) %}
+      <div class="q-card" data-qtype="{{ qt }}">
+        <div class="q-head">
+          <span class="q-num">{{ loop.index }}</span>
+          <span>{{ q.text }}</span>
+          <span class="q-score">{{ q.score }} балл</span>
+        </div>
+
+        {% if qt == 'multi' %}
+          {% set chosen = picked.get(q.id) | option_set %}
+          <p class="hint" style="margin:0 0 10px;">
+            Зөв хариулт хэд хэдэн байна. <strong>Бүгдийг нь</strong> сонгоно уу.
+          </p>
+          {% for key in OPTION_KEYS %}
+            <label class="opt {{ 'selected' if key in chosen }}">
+              <input type="checkbox" name="q{{ q.id }}" value="{{ key }}"
+                     {% if key in chosen %}checked{% endif %}>
+              <span class="opt-key">{{ key }}</span>
+              <span>{{ q['option_' ~ key|lower] }}</span>
+            </label>
+          {% endfor %}
+
+        {% elif qt == 'match' %}
+          {% set order = match_display_order(q.id) %}
+          {% set chosen = picked.get(q.id) | match_answer %}
+          <p class="hint" style="margin:0 0 10px;">
+            Зүүн талын зүйл бүрт харгалзах баруун талын дугаарыг сонгоно уу.
+          </p>
+
+          <div class="match-right">
+            {% for slot in range(1, OPTION_KEYS|length + 1) %}
+              {% set src = OPTION_KEYS[order[slot - 1]] %}
+              <div class="match-item">
+                <span class="opt-key">{{ slot }}</span>
+                <span>{{ q['match_' ~ src|lower] }}</span>
+              </div>
+            {% endfor %}
+          </div>
+
+          {% for key in OPTION_KEYS %}
+            <div class="match-row">
+              <span class="opt-key">{{ key }}</span>
+              <span class="match-label">{{ q['option_' ~ key|lower] }}</span>
+              <select name="q{{ q.id }}_{{ key }}" aria-label="{{ key }}-ийн хос">
+                <option value="">—</option>
+                {% for slot in range(1, OPTION_KEYS|length + 1) %}
+                  <option value="{{ slot }}"
+                    {% if chosen.get(key) == slot %}selected{% endif %}>{{ slot }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endfor %}
+
+        {% else %}
+          {% for key in OPTION_KEYS %}
+            <label class="opt {{ 'selected' if picked.get(q.id) == key }}">
+              <input type="radio" name="q{{ q.id }}" value="{{ key }}"
+                     {% if picked.get(q.id) == key %}checked{% endif %}>
+              <span class="opt-key">{{ key }}</span>
+              <span>{{ q['option_' ~ key|lower] }}</span>
+            </label>
+          {% endfor %}
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <button class="btn btn-block btn-lg" type="submit">Хариултаа илгээх</button>
+    <p class="hint" style="text-align:center;margin-top:10px;">
+      Илгээсний дараа хариултаа өөрчлөх боломжгүй.
+    </p>
+  </form>
+
+</div>
+
+{# Илгээхийн өмнөх баталгаажуулалт #}
+<dialog class="modal" id="submit-modal" aria-labelledby="submit-title">
+  <div class="modal-head" id="submit-title">Хариултаа илгээх үү?</div>
+  <div class="modal-body">
+    <p style="margin:0 0 8px;">
+      Тестээ сайн нягталж байж илгээнэ үү. Илгээсний дараа хариултаа өөрчлөх боломжгүй.
+    </p>
+    <p class="delta-down" data-unanswered style="display:none;margin:0;font-size:.87rem;"></p>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" type="button" data-submit-cancel>Буцаж нягтлах</button>
+    <button class="btn" type="button" data-submit-ok>Илгээх</button>
+  </div>
+</dialog>
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, empty_state, status_badge, kind_badge, alert, delete_form with context %}
+{% block title %}{{ test.title }} — EduTest{% endblock %}
+{% block page_title %}{{ test.title }}{% endblock %}
+{% block breadcrumb %}
+<p class="crumb">
+  <a href="{{ url_for('tests_index') }}">Тестүүд</a> /
+  <a href="{{ url_for('course_detail', course_id=test.course_id) }}">{{ test.course_code }}</a> / Засварлах
+</p>
+{% endblock %}
+
+{% block topbar_actions %}
+<a class="btn btn-ghost btn-sm" href="{{ url_for('test_share', test_id=test.id) }}">
+  {{ icon('qr', 15) }}<span>QR холбоос</span></a>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-head">
+  <div class="btn-row">
+    {{ kind_badge(test.kind) }}
+    {{ status_badge(test.status) }}
+    <span class="badge neutral">{{ questions|length }} асуулт · {{ total_score }} балл</span>
+    {% if attempt_count %}<span class="badge open">{{ attempt_count }} оролдлого</span>{% endif %}
+  </div>
+  <div class="actions">
+    {% if test.status != 'open' %}
+      <form method="post" action="{{ url_for('change_test_status', test_id=test.id) }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="status" value="open">
+        <button class="btn" type="submit" {% if not questions %}disabled{% endif %}>
+          {{ icon('play', 16) }}<span>Нээх</span></button>
+      </form>
+    {% else %}
+      <form method="post" action="{{ url_for('change_test_status', test_id=test.id) }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="status" value="closed">
+        <button class="btn btn-ghost" type="submit">{{ icon('stop', 16) }}<span>Хаах</span></button>
+      </form>
+    {% endif %}
+    {% if attempt_count %}
+      <a class="btn btn-ghost" href="{{ url_for('test_results', test_id=test.id) }}">
+        {{ icon('results', 16) }}<span>Үр дүн</span></a>
+    {% endif %}
+    <form method="post" action="{{ url_for('duplicate_test', test_id=test.id) }}" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn-ghost" type="submit">{{ icon('copy', 16) }}<span>Хувилах</span></button>
+    </form>
+    {% if not attempt_count %}
+      {{ delete_form(url_for('delete_test', test_id=test.id),
+                     '«' ~ test.title ~ '» тестийг устгах уу? ' ~ questions|length ~ ' асуулт хамт устана.',
+                     csrf_token, 'Устгах', 'Тест устгах', false) }}
+    {% endif %}
+  </div>
+</div>
+
+{% if not questions %}
+  {{ alert('info', 'Асуултгүй тестийг нээх боломжгүй. Доорх формоор эхний асуултаа нэмнэ үү.') }}
+{% endif %}
+
+{# ================= 1. Ерөнхий мэдээлэл ================= #}
+<div class="card">
+  <div class="card-head"><h3 class="section-title">Ерөнхий мэдээлэл</h3></div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('update_test', test_id=test.id) }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div class="form-section">
+        <div class="form-row">
+          <div class="field">
+            <label for="title">Тестийн гарчиг <span class="req">*</span></label>
+            <input type="text" id="title" name="title" value="{{ test.title }}" required>
+          </div>
+          <div class="field">
+            <label for="tgroup">Ангийн бүлэг</label>
+            <select id="tgroup" name="class_group_id">
+              <option value="">Бүх бүлэг</option>
+              {% for gr in groups %}
+                <option value="{{ gr.id }}" {% if test.class_group_id == gr.id %}selected{% endif %}>{{ gr.name }}</option>
+              {% endfor %}
+            </select>
+            <p class="hint">Оюутны бүртгэлийн формд харагдах бүлгийн жагсаалтад нөлөөлөхгүй.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>Хичээл ба хос</h4>
+        <p class="hint">Эдгээр нь хос үүсгэх үед тогтдог тул энд өөрчлөгдөхгүй.</p>
+        <dl class="kv">
+          <dt>Хичээл</dt><dd>{{ test.course_name }} ({{ test.course_code }})</dd>
+          <dt>Төрөл</dt><dd>{{ 'Оролтын тест (Pre)' if test.kind == 'pre' else 'Гаралтын тест (Post)' }}</dd>
+          <dt>Хос</dt><dd>{{ test.pair_name or '—' }}</dd>
+          <dt>Холбоосын код</dt><dd><code>{{ test.share_code }}</code></dd>
+        </dl>
+      </div>
+
+      <button class="btn" type="submit">Хадгалах</button>
+    </form>
+  </div>
+</div>
+
+{# ================= 2. Асуултууд ================= #}
+<div class="card">
+  <div class="card-head">
+    <h3 class="section-title">Асуултууд</h3>
+    <div class="spacer"></div>
+    <span class="badge neutral">{{ questions|length }} асуулт · {{ total_score }} балл</span>
+  </div>
+  <div class="card-body">
+    {% if questions %}
+      {% for q in questions %}
+        <div class="q-card" id="q{{ q.id }}">
+          <div class="q-head">
+            <span class="q-num">{{ q.order_no }}</span>
+            <span>{{ q.text }}</span>
+            <span class="q-score">
+              <span class="badge neutral">{{ QUESTION_TYPE_LABELS[question_type(q)] }}</span>
+              {{ q.score }} балл
+            </span>
+          </div>
+
+          {% set qt = question_type(q) %}
+          {% if qt == 'match' %}
+            {# Багшид ЗӨВ хосыг эгнээгээр нь харуулна (оюутанд холино). #}
+            {% for key in OPTION_KEYS %}
+              <div class="opt correct">
+                <span class="opt-key">{{ key }}</span>
+                <span>{{ q['option_' ~ key|lower] }}</span>
+                <span class="opt-tag delta-up">↔ {{ q['match_' ~ key|lower] or '—' }}</span>
+              </div>
+            {% endfor %}
+          {% else %}
+            {% set right = q.correct_option | option_set %}
+            {% for key in OPTION_KEYS %}
+              <div class="opt {{ 'correct' if key in right }}">
+                <span class="opt-key">{{ key }}</span>
+                <span>{{ q['option_' ~ key|lower] }}</span>
+                {% if key in right %}<span class="opt-tag delta-up">Зөв хариулт</span>{% endif %}
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <div class="btn-row" style="margin-top:12px;">
+            <form method="post" action="{{ url_for('move_question', question_id=q.id) }}" class="inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="direction" value="up">
+              <button class="btn btn-ghost btn-sm" type="submit" aria-label="Дээш зөөх"
+                      {% if loop.first %}disabled{% endif %}>{{ icon('up', 14) }}</button>
+            </form>
+            <form method="post" action="{{ url_for('move_question', question_id=q.id) }}" class="inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="direction" value="down">
+              <button class="btn btn-ghost btn-sm" type="submit" aria-label="Доош зөөх"
+                      {% if loop.last %}disabled{% endif %}>{{ icon('down', 14) }}</button>
+            </form>
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('edit_question', question_id=q.id) }}">
+              {{ icon('edit', 14) }}<span>Засах</span></a>
+            <div style="margin-left:auto;">
+              {{ delete_form(url_for('delete_question', question_id=q.id),
+                             q.order_no ~ '-р асуултыг устгах уу? Энэ үйлдлийг буцаах боломжгүй.',
+                             csrf_token, 'Устгах', 'Асуулт устгах') }}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      {{ empty_state('Асуулт нэмээгүй байна.',
+           'Нэг сонголттой (A/B/C/D) асуулт нэмнэ үү. Асуултгүй тестийг нээх боломжгүй.', 'file') }}
+    {% endif %}
+  </div>
+</div>
+
+{# ================= 3. Шинэ асуулт ================= #}
+<div class="card">
+  <div class="card-head"><h3 class="section-title">Шинэ асуулт нэмэх</h3></div>
+  <div class="card-body">
+    <form method="post" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% include "_question_form.html" %}
+      <button class="btn" type="submit">{{ icon('plus', 16) }}<span>Асуулт нэмэх</span></button>
+    </form>
+  </div>
+</div>
+{% endblock %}

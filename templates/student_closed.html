@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon with context %}
+{% block title %}Тест боломжгүй — EduTest{% endblock %}
+
+{% block content %}
+<div class="public-wrap">
+  <div style="text-align:center; margin-bottom: var(--sp-5);">
+    <span class="brand-mark" style="width:42px;height:42px;margin:0 auto 10px;">E</span>
+    <h2 style="margin:0;font-size:1.15rem;font-weight:650;">
+      {{ test.title if test else 'EduTest' }}</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="empty">
+        {{ icon('clock', 40) }}
+        <strong>{{ reason }}</strong>
+        <p>
+          Багшаасаа шинэ холбоос эсвэл тест нээгдэх хугацааг лавлана уу.
+          Хэрэв QR кодыг дөнгөж уншуулсан бол хэдэн минутын дараа дахин оролдож үзээрэй.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

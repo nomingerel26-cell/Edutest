@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, empty_state, status_badge with context %}
+{% block title %}Pre/Post хослол — EduTest{% endblock %}
+{% block page_title %}Pre/Post хослол{% endblock %}
+{% block breadcrumb %}<p class="crumb">Оролт ба Гаралтын тестийн хосууд</p>{% endblock %}
+
+{% block content %}
+{% if pairs %}
+<div class="card">
+  <div class="card-head">
+    <h3 class="section-title">Бүх хос</h3>
+    <div class="spacer"></div>
+    <span class="badge neutral">{{ pairs|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="data stacked">
+      <thead>
+        <tr><th class="wrap">Хос</th><th>Хичээл</th><th class="wrap">Оролтын тест</th>
+          <th class="wrap">Гаралтын тест</th><th class="n">Оролдлого</th><th></th></tr>
+      </thead>
+      <tbody>
+      {% for p in pairs %}
+        <tr>
+          <td class="wrap" data-label="Хос"><strong>{{ p.name }}</strong></td>
+          <td data-label="Хичээл">{{ p.course_code }}</td>
+          <td class="wrap" data-label="Оролт">
+            {% if p.pre_test_id %}
+              <a href="{{ url_for('test_detail', test_id=p.pre_test_id) }}">{{ p.pre_title }}</a>
+              {{ status_badge(p.pre_status) }}
+            {% else %}—{% endif %}
+          </td>
+          <td class="wrap" data-label="Гаралт">
+            {% if p.post_test_id %}
+              <a href="{{ url_for('test_detail', test_id=p.post_test_id) }}">{{ p.post_title }}</a>
+              {{ status_badge(p.post_status) }}
+            {% else %}—{% endif %}
+          </td>
+          <td class="n" data-label="Оролдлого">{{ p.attempt_count }}</td>
+          <td class="actions">
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('pair_comparison', pair_id=p.id) }}">
+              {{ icon('trend', 14) }}<span>Шинжилгээ</span></a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+  {% call empty_state('Хос үүсээгүй байна.',
+        'Хичээл дотор «Оролт + Гаралтын хос үүсгэх» товчийг ашиглана. Хос нь Pre/Post харьцуулалт хийх нэгж юм.', 'pair') %}
+    <a class="btn" href="{{ url_for('courses') }}">{{ icon('book', 16) }}<span>Хичээл рүү очих</span></a>
+  {% endcall %}
+{% endif %}
+{% endblock %}

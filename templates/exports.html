@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, empty_state, kind_badge with context %}
+{% block title %}Экспорт — EduTest{% endblock %}
+{% block page_title %}Экспорт{% endblock %}
+{% block breadcrumb %}<p class="crumb">Тайлан болон түүхий өгөгдлийг татаж авах</p>{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-head"><h3 class="section-title">Pre/Post харьцуулалтын тайлан</h3></div>
+  {% if pairs %}
+    <div class="table-wrap">
+      <table class="data stacked">
+        <thead>
+          <tr><th class="wrap">Хос</th><th>Хичээл</th><th class="n">Оролдлого</th><th>Татах</th></tr>
+        </thead>
+        <tbody>
+        {% for p in pairs %}
+          <tr>
+            <td class="wrap" data-label="Хос">
+              <a href="{{ url_for('pair_comparison', pair_id=p.id) }}"><strong>{{ p.name }}</strong></a>
+            </td>
+            <td data-label="Хичээл">{{ p.course_code }}</td>
+            <td class="n" data-label="Оролдлого">{{ p.attempt_count }}</td>
+            <td class="actions">
+              <div class="btn-row">
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('pair_comparison_csv', pair_id=p.id) }}">
+                  {{ icon('download', 14) }}<span>CSV татах</span></a>
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('pair_comparison_xlsx', pair_id=p.id) }}">
+                  {{ icon('sheet', 14) }}<span>Excel татах</span></a>
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('pair_report_docx', pair_id=p.id) }}">
+                  {{ icon('doc', 14) }}<span>Word тайлан татах</span></a>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body" style="border-top:1px solid var(--border);">
+      <p class="hint" style="margin:0;">
+        Excel файлд <strong>Summary</strong>, <strong>Student Results</strong>,
+        <strong>Unmatched Attempts</strong> гэсэн гурван хуудас багтана.
+        Word тайланд нэгтгэсэн үзүүлэлт, автомат дүгнэлт,
+        <strong>Шинжилгээ хуудасны 4 график</strong> болон бүрэн хүснэгт орно.
+      </p>
+    </div>
+  {% else %}
+    <div class="card-body">
+      {{ empty_state('Тайлан гаргах хос алга.',
+           'Оролт/Гаралтын хос үүсгэсний дараа Excel болон Word тайлан татах боломжтой болно.', 'pair') }}
+    </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-head"><h3 class="section-title">Тест тус бүрийн үр дүн</h3></div>
+  {% if tests %}
+    <div class="table-wrap">
+      <table class="data stacked">
+        <thead>
+          <tr><th class="wrap">Тест</th><th>Хичээл</th><th>Төрөл</th><th class="n">Илгээсэн</th><th>Татах</th></tr>
+        </thead>
+        <tbody>
+        {% for t in tests %}
+          <tr>
+            <td class="wrap" data-label="Тест">
+              <a href="{{ url_for('test_results', test_id=t.id) }}">{{ t.title }}</a>
+            </td>
+            <td data-label="Хичээл">{{ t.course_code }}</td>
+            <td data-label="Төрөл">{{ kind_badge(t.kind) }}</td>
+            <td class="n" data-label="Илгээсэн">{{ t.attempt_count }}</td>
+            <td class="actions">
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('test_results_csv', test_id=t.id) }}">
+                {{ icon('download', 14) }}<span>CSV татах</span></a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card-body">
+      {{ empty_state('Экспортлох үр дүн алга.',
+           'Оюутнууд тест бөглөсний дараа энд гарч ирнэ.', 'inbox') }}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

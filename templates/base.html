@@ -1,0 +1,125 @@
+{%- from "_macros.html" import icon with context -%}
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{% block title %}EduTest{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%234F46E5'/><text x='16' y='23' font-family='sans-serif' font-size='19' font-weight='bold' fill='white' text-anchor='middle'>E</text></svg>">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+{% include "_icons.html" %}
+
+{# --- Flash мессежүүдийг toast болгон харуулна ------------------------ #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="toast-stack" role="region" aria-label="Мэдэгдэл">
+      {% for category, message in messages %}
+        <div class="toast {{ category }}" role="status"
+             {% if category in ('error', 'warning') %}data-sticky{% endif %}>
+          {{ icon('warning' if category in ('error', 'warning') else ('check' if category == 'success' else 'info')) }}
+          <div>{{ message }}</div>
+          <button class="close" type="button" aria-label="Хаах">{{ icon('close', 15) }}</button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% if current_user %}
+{# =====================================================================
+   НЭВТЭРСЭН ХЭРЭГЛЭГЧИЙН БҮРХҮҮЛ
+   ===================================================================== #}
+<div class="shell">
+  <div class="sidebar-backdrop" aria-hidden="true"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <a class="sidebar-brand" href="{{ url_for('dashboard') }}">
+      <span class="brand-mark">E</span>
+      <span>EduTest
+        <span class="brand-sub">Оролт/Гаралтын тест</span>
+      </span>
+    </a>
+
+    <nav class="sidebar-nav" aria-label="Үндсэн цэс">
+      {% set nav = [
+        ('dashboard',  url_for('dashboard'),   'dashboard', 'Хяналтын самбар'),
+        ('courses',    url_for('courses'),     'book',      'Хичээл ба анги'),
+        ('tests_index',url_for('tests_index'), 'file',      'Тестүүд'),
+        ('pairs_index',url_for('pairs_index'), 'pair',      'Pre/Post хослол'),
+        ('results_index', url_for('results_index'), 'results', 'Үр дүн'),
+        ('analytics',  url_for('analytics'),   'trend',     'Шинжилгээ'),
+        ('exports',    url_for('exports'),     'download',  'Экспорт'),
+      ] %}
+      {% for endpoint, href, ico, label in nav %}
+        <a class="nav-link {{ 'active' if active_nav == endpoint }}" href="{{ href }}">
+          {{ icon(ico) }}<span>{{ label }}</span>
+        </a>
+      {% endfor %}
+
+      {% if current_user.role == 'admin' %}
+        <div class="sidebar-group">Удирдлага</div>
+        <a class="nav-link {{ 'active' if active_nav == 'admin_users' }}"
+           href="{{ url_for('admin_users') }}">
+          {{ icon('users') }}<span>Хэрэглэгчид</span>
+        </a>
+      {% endif %}
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="who">
+        <div class="who-name">{{ current_user.full_name }}</div>
+        <div class="who-role">
+          {{ 'Админ' if current_user.role == 'admin' else 'Багш' }}{% if current_user.department %} · {{ current_user.department }}{% endif %}
+        </div>
+      </div>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('logout') }}">
+        {{ icon('logout', 16) }}<span>Гарах</span>
+      </a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" type="button" data-nav-toggle
+              aria-controls="sidebar" aria-expanded="false" aria-label="Цэс нээх">
+        {{ icon('menu', 20) }}
+      </button>
+      <div>
+        {% block breadcrumb %}{% endblock %}
+        <h1>{% block page_title %}{{ self.title() }}{% endblock %}</h1>
+      </div>
+      <div class="spacer"></div>
+      {% block topbar_actions %}{% endblock %}
+    </header>
+
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+{% else %}
+{# =====================================================================
+   НИЙТИЙН ХУУДАС (нэвтрэлт шаардахгүй) — login, оюутны тест
+   ===================================================================== #}
+<main>{{ self.content() }}</main>
+{% endif %}
+
+{# --- Баталгаажуулах цонх (бүх хуудсанд нэг) -------------------------- #}
+<dialog class="modal" id="confirm-modal" aria-labelledby="confirm-title">
+  <div class="modal-head" id="confirm-title" data-confirm-title>Баталгаажуулах</div>
+  <div class="modal-body" data-confirm-body></div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" type="button" data-confirm-cancel>Болих</button>
+    <button class="btn btn-danger" type="button" data-confirm-ok>Устгах</button>
+  </div>
+</dialog>
+
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
