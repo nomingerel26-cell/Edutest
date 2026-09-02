@@ -874,6 +874,19 @@ def update_test(conn, test_id: int, title: str, class_group_id) -> None:
             (title, class_group_id, test_id))
 
 
+def count_submitted_attempts(conn, test_id: int) -> int:
+    """ДУУСГАСАН оролдлогын тоо.
+
+    `count_test_attempts` нь эхэлсэн боловч дуусгаагүй оролдлогыг ч
+    тоолдог. Тэдгээрт хариулт хадгалагдаагүй байдаг (answers нь зөвхөн
+    илгээх үед бичигддэг) тул хамгаалах өгөгдөл байхгүй. Асуулт солих
+    эрсдэлийг үнэлэхэд ЭНЭ тоог ашиглана.
+    """
+    row = fetch_one(conn, "SELECT COUNT(*) AS v FROM attempts "
+                          "WHERE test_id = ? AND submitted_at IS NOT NULL", (test_id,))
+    return int((row or {}).get("v") or 0)
+
+
 def count_test_attempts(conn, test_id: int) -> int:
     row = fetch_one(conn, "SELECT COUNT(*) AS v FROM attempts WHERE test_id = ?", (test_id,))
     return int((row or {}).get("v") or 0)

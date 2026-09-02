@@ -524,7 +524,7 @@ def _question_signature(rows) -> list:
     ) for r in rows]
 
 
-def _sync_pair_questions(test) -> tuple[str, str] | None:
+def _sync_pair_questions(test, *, force: bool = False) -> tuple[str, str]:
     """Оролтын тест нээгдэхэд асуултыг ижил хосын гаралтын тест рүү хуулна.
 
     Оролт/гаралт хоёр ЯГ ИЖИЛ асуулттай байх нь зорилготой — ахиц (Δ)
@@ -560,16 +560,24 @@ def _sync_pair_questions(test) -> tuple[str, str] | None:
         return done(f"«{post['title']}» аль хэдийн ижил {len(source)} "
                     f"асуулттай байна — өөрчлөлт хийсэнгүй.", "info")
 
-    # Оролдлого бүртгэгдсэн бол асуултыг СОЛИХГҮЙ: асуулт устахад
-    # answers мөрүүд cascade-аар дагаж устаж, оюутны үр дүн алга болно.
-    if existing and db.count_test_attempts(g.conn, post["id"]):
-        return done(f"«{post['title']}» дээр оюутны оролдлого бүртгэгдсэн тул "
-                    f"асуултыг хуулаагүй. Шаардлагатай бол гараар шинэчилнэ үү.",
-                    "error")
+    # Асуулт устахад answers мөрүүд cascade-аар дагаж устдаг тул
+    # ДУУСГАСАН оролдлоготой байхад дарж бичихгүй. Дуусгаагүй оролдлого
+    # (жишээ нь багш линкээ нээж үзсэн) нь хариултгүй тул саад болохгүй —
+    # эс бөгөөс нэг удаагийн санамсаргүй нээлт синкийг бүр мөсөн хаана.
+    submitted = db.count_submitted_attempts(g.conn, post["id"])
+    if existing and submitted and not force:
+        return done(f"«{post['title']}» дээр {submitted} оюутан тестээ өгсөн "
+                    f"байна. Асуултыг солиход тэдний үр дүн устах тул "
+                    f"хуулаагүй. Дарж бичихийн тулд баталгаажуулах "
+                    f"шаардлагатай.", "error")
 
     replaced = db.delete_test_questions(g.conn, post["id"]) if existing else 0
     copied = db.copy_questions(g.conn, test["id"], post["id"])
 
+    if replaced and submitted:
+        return done(f"«{post['title']}» руу {copied} асуулт хуулж, хуучин "
+                    f"{replaced} асуулт болон {submitted} оюутны үр дүнг "
+                    f"устгалаа.", "warning")
     if replaced:
         return done(f"«{post['title']}» руу {copied} асуулт хуулж, хуучин "
                     f"{replaced} асуултыг сольлоо.")
@@ -586,7 +594,8 @@ def sync_pair_questions(test_id):
     ДАРАА асуулт нэмсэн бол энэ товчоор дахин тэнцүүлнэ.
     """
     test = owned_test(test_id)
-    message, kind = _sync_pair_questions(test)
+    force = (request.form.get("force") or "") == "1"
+    message, kind = _sync_pair_questions(test, force=force)
     flash(message, kind)
     return redirect(url_for("test_detail", test_id=test_id))
 
@@ -687,11 +696,21 @@ def test_detail(test_id):
 
     questions = db.list_questions(g.conn, test_id)
     share_url = url_for("student_start", share_code=test["share_code"], _external=True)
+
+    # Гаралт руу хуулах товч дарж бичихээс өмнө анхааруулах эсэхийг
+    # мэдэхийн тулд хосын гаралтад хэдэн дүн байгааг тоолно.
+    pair_post_submitted = 0
+    if test["kind"] == "pre" and test["pair_id"]:
+        pair_post = db.get_pair_tests(g.conn, test["pair_id"]).get("post")
+        if pair_post:
+            pair_post_submitted = db.count_submitted_attempts(g.conn, pair_post["id"])
+
     return render_template(
         "test_detail.html", test=test, questions=questions, form=form,
         share_url=share_url, total_score=sum(q["score"] for q in questions),
         groups=db.list_groups(g.conn, test["course_id"]),
         attempt_count=db.count_test_attempts(g.conn, test_id),
+        pair_post_submitted=pair_post_submitted,
     )
 
 

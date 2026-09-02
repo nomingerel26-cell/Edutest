@@ -43,10 +43,18 @@
         {{ icon('results', 16) }}<span>Үр дүн</span></a>
     {% endif %}
     {# Автомат хуулалт нь тест НЭЭГДЭХ мөчид ажилладаг. Нээсний дараа
-       асуулт нэмсэн бол энэ товчоор Гаралттай дахин тэнцүүлнэ. #}
+       асуулт нэмсэн/зассан бол энэ товчоор Гаралттай дахин тэнцүүлнэ. #}
     {% if test.kind == 'pre' and test.pair_id and questions %}
-      <form method="post" action="{{ url_for('sync_pair_questions', test_id=test.id) }}" class="inline">
+      <form method="post" action="{{ url_for('sync_pair_questions', test_id=test.id) }}"
+            class="inline"
+            {% if pair_post_submitted %}
+              data-confirm="Гаралтын тест дээр {{ pair_post_submitted }} оюутан тестээ өгсөн байна. Асуултыг солиход тэдний үр дүн БҮРМӨСӨН устана. Үргэлжлүүлэх үү?"
+              data-confirm-title="Гаралтын үр дүн устана"
+              data-confirm-ok-label="Дарж бичих"
+            {% endif %}>
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {# Дүн байгаа үед л force явуулна — байхгүй бол сервер шууд хуулна. #}
+        {% if pair_post_submitted %}<input type="hidden" name="force" value="1">{% endif %}
         <button class="btn btn-ghost" type="submit">
           {{ icon('pair', 16) }}<span>Гаралт руу хуулах</span></button>
       </form>

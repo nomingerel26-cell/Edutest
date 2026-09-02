@@ -162,25 +162,68 @@ class PairSyncTests(unittest.TestCase):
 
         self.assertEqual([q["id"] for q in self.questions("post")], ids)
 
-    def test_post_with_attempts_is_left_alone(self):
-        """Оролдлого өгсөн гаралтыг дарж бичихгүй — үр дүн устах эрсдэлтэй."""
-        self.add_question(self.tests["pre"], "Оролтын асуулт")
+    def _seed_post_attempt(self, *, submitted: bool):
+        """Гаралтад өөр асуулт ба нэг оролдлого үүсгэнэ."""
         conn = db.connect(self.db_path)
         db.create_question(conn, self.tests["post"], 1, "Гаралтын өөр асуулт",
                            {"A": "a", "B": "b", "C": "c", "D": "d", "E": "e"}, "A", 2)
         group_id = db.create_group(conn, self.course_id, "G1", 10, domain.now_iso())
         student_id = db.create_student(conn, group_id, "Оюутан", "S1", "s1",
                                        None, domain.now_iso())
-        db.create_attempt(conn, self.tests["post"], self.pair_id, student_id,
-                          "s1", "Оюутан", domain.now_iso())
+        attempt_id = db.create_attempt(conn, self.tests["post"], self.pair_id,
+                                       student_id, "s1", "Оюутан", domain.now_iso())
+        if submitted:
+            db.finish_attempt(conn, attempt_id, 2, 2, 100, domain.now_iso())
         conn.commit()
         conn.close()
+        return attempt_id
+
+    def test_post_with_submitted_results_is_left_alone(self):
+        """Тестээ ӨГСӨН оюутантай гаралтыг дарж бичихгүй."""
+        self.add_question(self.tests["pre"], "Оролтын асуулт")
+        self._seed_post_attempt(submitted=True)
 
         self.open_pre()
 
         rows = self.questions("post")
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["text"], "Гаралтын өөр асуулт")
+
+    def test_unfinished_attempt_does_not_block_sync(self):
+        """Дуусгаагүй оролдлогод хариулт хадгалагддаггүй тул хамгаалах зүйл
+        байхгүй. Багш линкээ нээж үзсэн нь синкийг бүр мөсөн хаах ёсгүй."""
+        self.add_question(self.tests["pre"], "Оролтын асуулт")
+        self._seed_post_attempt(submitted=False)
+
+        self.open_pre()
+
+        rows = self.questions("post")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["text"], "Оролтын асуулт")
+
+    def test_force_overwrites_submitted_results(self):
+        """Багш баталгаажуулбал дүнг устгаж дарж бичнэ."""
+        self.add_question(self.tests["pre"], "Оролтын асуулт")
+        self._seed_post_attempt(submitted=True)
+
+        r = self.client.post(f"/tests/{self.tests['pre']}/sync-pair",
+                             data={"csrf_token": self.token(), "force": "1"},
+                             follow_redirects=True)
+        self.assertEqual(r.status_code, 200)
+        rows = self.questions("post")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["text"], "Оролтын асуулт")
+
+    def test_sync_button_asks_to_confirm_only_when_results_exist(self):
+        self.add_question(self.tests["pre"], "Оролтын асуулт")
+        body = self.client.get(f"/tests/{self.tests['pre']}").data.decode()
+        self.assertIn("Гаралт руу хуулах", body)
+        self.assertNotIn('name="force"', body)
+
+        self._seed_post_attempt(submitted=True)
+        body = self.client.get(f"/tests/{self.tests['pre']}").data.decode()
+        self.assertIn('name="force"', body)
+        self.assertIn("БҮРМӨСӨН устана", body)
 
     def test_manual_button_syncs_after_test_is_already_open(self):
         """Нээсний ДАРАА нэмсэн асуулт — автомат синк ажиллахаа больсон
