@@ -423,6 +423,34 @@ def course_detail(course_id):
     )
 
 
+@app.route("/courses/<int:course_id>/delete", methods=["GET", "POST"])
+@admin_required
+def delete_course(course_id):
+    """Хичээлийг бүх өгөгдлийн хамт устгана. ЗӨВХӨН АДМИН.
+
+    Cascade нь ангийн бүлэг, оюутан, хос, тест, асуулт, оролдлого,
+    хариулт бүгдийг авч явна — эргэж сэргээх боломжгүй. Тиймээс энэ нь
+    нэг товчны үйлдэл БИШ: тусдаа хуудсанд юу устахыг харуулж, админаар
+    хичээлийн кодыг гараар бичүүлж баталгаажуулна.
+    """
+    course = owned_course(course_id)
+    summary = db.course_delete_summary(g.conn, course_id)
+
+    if request.method == "POST":
+        typed = (request.form.get("confirm_code") or "").strip()
+        if typed.upper() != (course["code"] or "").upper():
+            flash(f"Код таарахгүй байна. Устгахын тулд «{course['code']}» "
+                  f"гэж яг бичнэ үү.", "error")
+            return render_template("course_delete.html",
+                                   course=course, summary=summary), 400
+        name = course["name"]
+        db.delete_course(g.conn, course_id)
+        flash(f"«{name}» хичээл бүх өгөгдлийн хамт устлаа.", "success")
+        return redirect(url_for("courses"))
+
+    return render_template("course_delete.html", course=course, summary=summary)
+
+
 @app.route("/courses/<int:course_id>/groups", methods=["POST"])
 @login_required
 def create_group(course_id):

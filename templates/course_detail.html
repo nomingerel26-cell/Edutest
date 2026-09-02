@@ -15,6 +15,12 @@
     </div>
     <p class="sub">{{ course.semester }} · Багш: {{ course.teacher_name }}</p>
   </div>
+  <div class="spacer"></div>
+  {# Хичээл устгах нь бүх тест, оюутан, үр дүнг авч явдаг тул зөвхөн админ. #}
+  {% if current_user and current_user.role == 'admin' %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('delete_course', course_id=course.id) }}">
+      {{ icon('trash', 15) }}<span>Хичээл устгах</span></a>
+  {% endif %}
 </div>
 
 {# ================= Ангийн бүлэг ================= #}

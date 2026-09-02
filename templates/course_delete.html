@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon with context %}
+{% block title %}{{ course.code }} устгах — EduTest{% endblock %}
+{% block page_title %}Хичээл устгах{% endblock %}
+{% block breadcrumb %}
+<p class="crumb">
+  <a href="{{ url_for('courses') }}">Хичээл ба анги</a> /
+  <a href="{{ url_for('course_detail', course_id=course.id) }}">{{ course.code }}</a> /
+  Устгах
+</p>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:680px;">
+  <div class="card-head">
+    <h3 class="section-title">«{{ course.name }}» устгах уу?</h3>
+    <div class="spacer"></div>
+    <span class="badge pre">{{ course.code }}</span>
+  </div>
+
+  <div class="card-body">
+    <p class="hint" style="margin-top:0;">
+      Энэ үйлдэл <strong>эргэж сэргээгдэхгүй</strong>. Хичээлтэй холбоотой
+      доорх бүх өгөгдөл бүрмөсөн устана.
+    </p>
+
+    {# Юу устахыг ТООГООР нь харуулна — админ юу алдахаа мэдэж байх ёстой. #}
+    <div class="table-wrap" style="margin:16px 0;">
+      <table class="data stacked">
+        <thead><tr><th>Юу устах</th><th class="n">Тоо</th></tr></thead>
+        <tbody>
+          <tr><td data-label="Юу устах">Ангийн бүлэг</td>
+              <td class="n" data-label="Тоо">{{ summary.group_count }}</td></tr>
+          <tr><td data-label="Юу устах">Оюутан</td>
+              <td class="n" data-label="Тоо">{{ summary.student_count }}</td></tr>
+          <tr><td data-label="Юу устах">Оролт/Гаралтын хос</td>
+              <td class="n" data-label="Тоо">{{ summary.pair_count }}</td></tr>
+          <tr><td data-label="Юу устах">Тест</td>
+              <td class="n" data-label="Тоо">{{ summary.test_count }}</td></tr>
+          <tr><td data-label="Юу устах">Асуулт</td>
+              <td class="n" data-label="Тоо">{{ summary.question_count }}</td></tr>
+          <tr><td data-label="Юу устах">Оюутны оролдлого ба хариулт</td>
+              <td class="n" data-label="Тоо">{{ summary.attempt_count }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    {% if summary.attempt_count %}
+      <p class="hint" style="color:var(--danger);">
+        <strong>Анхаар:</strong> {{ summary.attempt_count }} оюутны оролдлого,
+        тэдгээрийн үр дүн хамт устана. Тайлан хэрэгтэй бол урьдчилан
+        <a href="{{ url_for('exports') }}">экспорт</a> хийж авна уу.
+      </p>
+    {% endif %}
+
+    <form method="post" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div class="field" style="max-width:320px;">
+        <label for="confirm_code">
+          Баталгаажуулахын тулд <code>{{ course.code }}</code> гэж бичнэ үү
+          <span class="req">*</span>
+        </label>
+        <input type="text" id="confirm_code" name="confirm_code"
+               autocomplete="off" autocapitalize="characters"
+               placeholder="{{ course.code }}" required>
+      </div>
+
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn btn-danger" type="submit">
+          {{ icon('trash', 15) }}<span>Бүрмөсөн устгах</span></button>
+        <a class="btn btn-ghost" href="{{ url_for('course_detail', course_id=course.id) }}">
+          Болих</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

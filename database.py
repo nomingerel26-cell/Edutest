@@ -293,6 +293,31 @@ def create_course(conn, teacher_id, name, code, credit, semester, created_at) ->
     )
 
 
+def course_delete_summary(conn, course_id: int) -> dict:
+    """Хичээл устгахад ХАМТ устах мөрүүдийн тоо.
+
+    Баталгаажуулах хуудсанд харуулна — админ юу алдахаа урьдчилан
+    харах ёстой. Cascade нь courses -> class_groups -> students ->
+    attempts -> answers, мөн courses -> tests -> questions гэж явдаг.
+    """
+    row = fetch_one(conn, """
+        SELECT
+          (SELECT COUNT(*) FROM class_groups WHERE course_id = ?) AS group_count,
+          (SELECT COUNT(*) FROM test_pairs   WHERE course_id = ?) AS pair_count,
+          (SELECT COUNT(*) FROM tests        WHERE course_id = ?) AS test_count,
+          (SELECT COUNT(*) FROM students s
+             JOIN class_groups cg ON cg.id = s.class_group_id
+            WHERE cg.course_id = ?)                              AS student_count,
+          (SELECT COUNT(*) FROM questions q
+             JOIN tests t ON t.id = q.test_id
+            WHERE t.course_id = ?)                               AS question_count,
+          (SELECT COUNT(*) FROM attempts a
+             JOIN tests t ON t.id = a.test_id
+            WHERE t.course_id = ?)                               AS attempt_count
+    """, (course_id,) * 6)
+    return {k: int(v or 0) for k, v in (row or {}).items()}
+
+
 def delete_course(conn, course_id: int) -> None:
     execute(conn, "DELETE FROM courses WHERE id = ?", (course_id,))
 
