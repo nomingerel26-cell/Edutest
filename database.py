@@ -548,7 +548,8 @@ def get_attempt(conn, attempt_id: int):
     return fetch_one(
         conn,
         """SELECT a.*, s.full_name, s.email, s.student_code, s.normalized_student_code,
-                  t.title AS test_title, t.kind AS test_kind, t.share_code
+                  t.title AS test_title, t.kind AS test_kind, t.share_code,
+                  t.status AS test_status
            FROM attempts a
            JOIN students s ON s.id = a.student_id
            JOIN tests    t ON t.id = a.test_id

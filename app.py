@@ -1321,12 +1321,20 @@ def student_result(attempt_id):
         abort(404)
     answers = db.list_answers(g.conn, attempt_id)
     correct_count = sum(1 for a in answers if a["is_correct"])
-    # Тэмдэглэл: `answers` дотор `correct_option` багана байгаа боловч
-    # student_result.html түүнийг ХАРУУЛАХГҮЙ — зөв хариулт оюутанд
-    # алдагдвал тест үргэлжилж байх үед шударга байдал алдагдана.
+    # Асуулт тус бүрийн ✓/✕ нь ТЕСТ ХААГДСАНЫ ДАРАА л харагдана.
+    #
+    # Шалтгаан: оюутан хуурамч кодоор дахин орж болдог. Хэрэв аль асуулт
+    # буруу байсныг шууд хэлж өгвөл нэг дахин оролдлогоор бүх зөв
+    # хариултыг олох боломжтой болно. Хаагдсаны дараа тэр эрсдэл алга
+    # болох тул сурах ач холбогдол нь үлдэнэ.
+    #
+    # `answers` дотор `correct_option` багана байгаа боловч загвар
+    # түүнийг ХЭЗЭЭ Ч харуулахгүй.
+    reveal = attempt["test_status"] == "closed"
     return render_template("student_result.html", attempt=attempt, answers=answers,
                            correct_count=correct_count,
-                           wrong_count=len(answers) - correct_count)
+                           wrong_count=len(answers) - correct_count,
+                           reveal=reveal)
 
 
 # =====================================================================
