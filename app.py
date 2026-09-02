@@ -119,9 +119,39 @@ def _bad_request(_e):
 # `database.migrate` нь idempotent — хийгдсэн алхмыг давтахгүй тул
 # сервер дахин эхлэх бүрд ажиллуулахад аюулгүй.
 # =====================================================================
+def _bootstrap_admin(conn) -> None:
+    """Хэрэглэгч огт байхгүй үед орчны хувьсагчаас админ үүсгэнэ.
+
+    Байршуулсан сервер дээр `seed.py` ажиллуулах боломжгүй тул эхний
+    админыг ингэж үүсгэнэ. EDUTEST_ADMIN_EMAIL / EDUTEST_ADMIN_PASSWORD
+    хоёрын аль нэг нь тохируулаагүй бол ЮУ Ч ХИЙХГҮЙ — анхдагч нууц үгтэй
+    админ автоматаар үүсгэвэл хэн ч нэвтэрч чадах эрсдэлтэй.
+    """
+    if db.list_users(conn):
+        return
+    email = os.environ.get("EDUTEST_ADMIN_EMAIL", "").strip()
+    password = os.environ.get("EDUTEST_ADMIN_PASSWORD", "")
+    if not email or not password:
+        print("АНХААРУУЛГА: Өгөгдлийн санд хэрэглэгч алга. Админ үүсгэхийн "
+              "тулд EDUTEST_ADMIN_EMAIL, EDUTEST_ADMIN_PASSWORD хувьсагчийг "
+              "тохируулаад серверээ дахин эхлүүлнэ үү.")
+        return
+    name = os.environ.get("EDUTEST_ADMIN_NAME", "Админ")
+    department = os.environ.get("EDUTEST_ADMIN_DEPARTMENT", "Сургалтын алба")
+    db.create_user(conn, name, email, domain.hash_password(password),
+                   "admin", department, domain.now_iso())
+    conn.commit()
+    print(f"✓ Админ хэрэглэгч үүслээ: {email}")
+
+
 def _migrate_on_startup() -> None:
-    if not db.DB_PATH.exists():
-        return          # seed.py хараахан ажиллаагүй — init_db өөрөө хийнэ
+    # Сан байхгүй бол схемийг ЭНД үүсгэнэ. gunicorn зэрэг WSGI сервер нь
+    # `__main__` блокийг ажиллуулдаггүй тул тэнд байгаа шалгалт хүрэлцэхгүй —
+    # энэ функц import үед дуудагддаг учир байршуулсан орчинд ч ажиллана.
+    fresh = not db.DB_PATH.exists()
+    if fresh:
+        print("edutest.db олдсонгүй — schema.sql-аас шинээр үүсгэж байна…")
+        db.init_db()
     conn = db.connect()
     try:
         steps = db.migrate(conn)
@@ -129,6 +159,8 @@ def _migrate_on_startup() -> None:
             print("Өгөгдлийн сангийн шинэчлэл хийгдлээ:")
             for step in steps:
                 print("  •", step)
+        if fresh:
+            _bootstrap_admin(conn)
     finally:
         conn.close()
 
@@ -1145,9 +1177,6 @@ def student_result(attempt_id):
 
 # =====================================================================
 if __name__ == "__main__":
-    if not db.DB_PATH.exists():
-        print("edutest.db олдсонгүй — эхлээд `python3 seed.py` ажиллуулна уу.")
-        raise SystemExit(1)
     # Debug горим ЗӨВХӨН EDUTEST_DEBUG=1 үед асна.
     # Production-д анхдагчаар унтраалттай (Werkzeug debugger нь кодыг
     # алсаас ажиллуулах боломж нээдэг тул нээлттэй сүлжээнд аюултай).
