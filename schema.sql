@@ -66,6 +66,14 @@ CREATE TABLE IF NOT EXISTS tests (
     title          TEXT NOT NULL,
     kind           TEXT NOT NULL CHECK (kind IN ('pre', 'post')),
     status         TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'open', 'closed')),
+    -- Хэн тест өгөх эрхтэй вэ:
+    --   'any'    — хэн ч ямар ч оюутны код бичээд орно (гадны сургалт,
+    --              семинар, кодгүй оролцогчид).
+    --   'roster' — багшийн урьдчилан бүртгэсэн кодоор л орно.
+    -- CHECK тавихгүй: миграцаар нэмэгдэх багана хязгаарлалтгүй байдаг тул
+    -- шинэ ба хуучин сан зөрөхөөс сэргийлж утгыг Python талд шалгана
+    -- (domain.ENTRY_MODES).
+    entry_mode     TEXT NOT NULL DEFAULT 'any',
     share_code     TEXT NOT NULL UNIQUE,
     created_at     TEXT NOT NULL
 );

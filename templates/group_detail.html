@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, empty_state, alert, delete_form with context %}
+{% block title %}{{ group.name }} — оюутны жагсаалт{% endblock %}
+{% block page_title %}{{ group.name }}{% endblock %}
+{% block breadcrumb %}
+<p class="crumb">
+  <a href="{{ url_for('courses') }}">Хичээл ба анги</a> /
+  <a href="{{ url_for('course_detail', course_id=course.id) }}">{{ course.code }}</a> /
+  {{ group.name }}
+</p>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="btn-row">
+    <span class="badge pre">{{ course.code }}</span>
+    <span class="badge neutral">{{ students|length }} оюутан бүртгэлтэй</span>
+  </div>
+</div>
+
+{{ alert('info', 'Энэ жагсаалт нь «Зөвхөн жагсаалтаас» горимтой тестүүдэд
+         хэрэглэгдэнэ. Тэр горимд эндхийн кодоор л тест өгөх боломжтой болно.
+         «Нээлттэй» горимтой тест жагсаалтаас үл хамааран ажиллана.') }}
+
+{# ================= Жагсаалт нэмэх ================= #}
+<div class="card">
+  <div class="card-head"><h3 class="section-title">Оюутан нэмэх</h3></div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('add_students', group_id=group.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="field">
+        <label for="roster">Мөр бүрд нэг оюутан <span class="req">*</span></label>
+        <textarea id="roster" name="roster" rows="6" required
+                  placeholder="B230101, Батын Болд&#10;B230102, Доржийн Сараа&#10;B230103"></textarea>
+        <p class="hint">
+          Хэлбэр: <code>код</code> эсвэл <code>код, нэр</code>. Таслал, цэг таслал,
+          табаар салгаж болно — Excel-ээс шууд хуулж буулгахад ажиллана.
+          Нэр бичихгүй бол код нь нэр болно. Толгой мөр, давхардсан код автоматаар
+          алгасагдана. Аль хэдийн бүртгэлтэй оюутны нэрийг дарж бичихгүй.
+        </p>
+      </div>
+      <div class="btn-row">
+        <button class="btn" type="submit">{{ icon('plus', 16) }}<span>Нэмэх</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ================= Одоогийн жагсаалт ================= #}
+<div class="card">
+  <div class="card-head">
+    <h3 class="section-title">Бүртгэлтэй оюутнууд</h3>
+    <div class="spacer"></div>
+    <span class="badge neutral">{{ students|length }}</span>
+  </div>
+
+  {% if students %}
+    <div class="table-wrap">
+      <table class="data stacked">
+        <thead>
+          <tr><th>Нэр</th><th>Оюутны код</th><th class="n">Өгсөн тест</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for s in students %}
+          <tr>
+            <td data-label="Нэр"><strong>{{ s.full_name }}</strong>
+              {% if s.email %}<br><span class="hint">{{ s.email }}</span>{% endif %}
+            </td>
+            <td data-label="Оюутны код"><code>{{ s.student_code }}</code></td>
+            <td class="n" data-label="Өгсөн тест">{{ s.attempt_count }}</td>
+            <td class="actions">
+              {% if s.attempt_count %}
+                {{ delete_form(url_for('delete_student', student_id=s.id),
+                               '«' ~ s.full_name ~ '» ' ~ s.attempt_count ~ ' тест өгсөн байна. Хасвал түүний БҮХ үр дүн устана. Үргэлжлүүлэх үү?',
+                               csrf_token, 'Хасах', 'Үр дүн хамт устана') }}
+              {% else %}
+                {{ delete_form(url_for('delete_student', student_id=s.id),
+                               '«' ~ s.full_name ~ '» жагсаалтаас хасах уу?',
+                               csrf_token, 'Хасах', 'Жагсаалтаас хасах') }}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {{ empty_state('Жагсаалт хоосон байна',
+                   'Дээрх талбарт оюутны кодуудаа буулгаад «Нэмэх» дарна уу.',
+                   'users') }}
+  {% endif %}
+</div>
+{% endblock %}

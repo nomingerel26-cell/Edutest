@@ -64,6 +64,8 @@ app.jinja_env.globals["MATCH_OPTION_KEYS"] = domain.MATCH_OPTION_KEYS
 app.jinja_env.globals["option_keys"] = domain.option_keys
 app.jinja_env.globals["option_label"] = domain.option_label
 app.jinja_env.globals["visible_option_keys"] = domain.visible_option_keys
+app.jinja_env.globals["entry_mode"] = domain.entry_mode
+app.jinja_env.globals["ENTRY_MODE_LABELS"] = domain.ENTRY_MODE_LABELS
 app.jinja_env.globals["QUESTION_TYPES"] = domain.QUESTION_TYPES
 app.jinja_env.globals["QUESTION_TYPE_LABELS"] = domain.QUESTION_TYPE_LABELS
 app.jinja_env.globals["question_type"] = domain.question_type
@@ -473,6 +475,82 @@ def create_group(course_id):
     return redirect(url_for("course_detail", course_id=course_id))
 
 
+@app.route("/groups/<int:group_id>")
+@login_required
+def group_detail(group_id):
+    """Бүлгийн оюутны жагсаалт — «Зөвхөн жагсаалтаас» горимын үндэс."""
+    group = db.get_group(g.conn, group_id)
+    if not group:
+        abort(404)
+    course = owned_course(group["course_id"])
+    return render_template(
+        "group_detail.html", group=group, course=course,
+        students=db.list_students(g.conn, group_id),
+    )
+
+
+@app.route("/groups/<int:group_id>/students", methods=["POST"])
+@login_required
+def add_students(group_id):
+    """Оюутнуудыг жагсаалтад нэмнэ.
+
+    Нэг талбар — нэг мөр нэг оюутан. Ингэснээр нэгийг нэмэх ба Excel-ээс
+    олноор буулгах хоёр тусдаа форм шаардахгүй.
+    """
+    group = db.get_group(g.conn, group_id)
+    if not group:
+        abort(404)
+    owned_course(group["course_id"])
+
+    rows, errors = domain.parse_student_roster(request.form.get("roster") or "")
+    for e in errors:
+        flash(e, "warning")
+
+    now = domain.now_iso()
+    added = skipped = 0
+    for row in rows:
+        if db.get_student_by_code(g.conn, group_id, row["normalized"]):
+            skipped += 1        # аль хэдийн бүртгэлтэй — нэрийг нь дарж бичихгүй
+            continue
+        db.create_student(g.conn, group_id, row["full_name"], row["student_code"],
+                          row["normalized"], None, now)
+        added += 1
+
+    if added:
+        flash(f"{added} оюутан жагсаалтад нэмэгдлээ."
+              + (f" {skipped} нь аль хэдийн бүртгэлтэй байсан." if skipped else ""),
+              "success")
+    elif skipped:
+        flash(f"{skipped} оюутан бүгд аль хэдийн бүртгэлтэй байна.", "info")
+    return redirect(url_for("group_detail", group_id=group_id))
+
+
+@app.route("/students/<int:student_id>/delete", methods=["POST"])
+@login_required
+def delete_student(student_id):
+    student = db.get_student(g.conn, student_id)
+    if not student:
+        abort(404)
+    group = db.get_group(g.conn, student["class_group_id"])
+    owned_course(group["course_id"])
+    db.delete_student(g.conn, student_id)
+    flash(f"«{student['full_name']}» жагсаалтаас хасагдлаа.", "success")
+    return redirect(url_for("group_detail", group_id=group["id"]))
+
+
+@app.route("/tests/<int:test_id>/entry-mode", methods=["POST"])
+@login_required
+def set_entry_mode(test_id):
+    test = owned_test(test_id)
+    mode = (request.form.get("entry_mode") or "").strip().lower()
+    if mode not in domain.ENTRY_MODES:
+        flash("Нэвтрэх горим буруу байна.", "error")
+        return redirect(url_for("test_detail", test_id=test_id))
+    db.set_test_entry_mode(g.conn, test_id, mode)
+    flash(f"Нэвтрэх горим: {domain.ENTRY_MODE_LABELS[mode]}.", "success")
+    return redirect(url_for("test_detail", test_id=test_id))
+
+
 @app.route("/groups/<int:group_id>/delete", methods=["POST"])
 @login_required
 def delete_group(group_id):
@@ -705,12 +783,20 @@ def test_detail(test_id):
         if pair_post:
             pair_post_submitted = db.count_submitted_attempts(g.conn, pair_post["id"])
 
+    # «Зөвхөн жагсаалтаас» горимд хэн ч орж чадахгүй байх эрсдэлийг
+    # анхааруулахын тулд холбогдох бүлгүүдийн жагсаалтын нийт хэмжээ.
+    groups = db.list_groups(g.conn, test["course_id"])
+    relevant = ([gr for gr in groups if gr["id"] == test["class_group_id"]]
+                if test["class_group_id"] else groups)
+    roster_total = sum(len(db.list_students(g.conn, gr["id"])) for gr in relevant)
+
     return render_template(
         "test_detail.html", test=test, questions=questions, form=form,
         share_url=share_url, total_score=sum(q["score"] for q in questions),
-        groups=db.list_groups(g.conn, test["course_id"]),
+        groups=groups,
         attempt_count=db.count_test_attempts(g.conn, test_id),
         pair_post_submitted=pair_post_submitted,
+        roster_total=roster_total,
     )
 
 
@@ -1245,6 +1331,15 @@ def student_start(share_code):
         email = form["email"].strip() or None   # заавал биш, зөвхөн харуулах
 
         student = db.get_student_by_code(g.conn, group_id, norm_code)
+
+        # «Зөвхөн жагсаалтаас» горимд бүртгэлгүй код нэвтрэхгүй. Ингэснээр
+        # хуурамч кодоор дахин оролдох зам хаагдана.
+        if not student and domain.entry_mode(test) == "roster":
+            flash("Таны оюутны код энэ бүлгийн жагсаалтад бүртгэлгүй байна. "
+                  "Кодоо шалгах эсвэл багштайгаа холбогдоно уу.", "error")
+            return render_template("student_start.html", test=test, groups=groups,
+                                   form=form), 403
+
         if student:
             # Нэр зөрвөл students.full_name-ийг ДАРЖ БИЧИХГҮЙ — чимээгүй нэгтгэхгүй.
             # Бичсэн нэрийг оролдлого дээр хадгалж, багшид зөрчил болгон харуулна.

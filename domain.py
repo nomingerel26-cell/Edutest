@@ -542,6 +542,74 @@ def validate_question(text: str, options: dict, correct_option: str, score,
     return errors
 
 
+# =====================================================================
+# ТЕСТЭД НЭВТРЭХ ГОРИМ
+# ---------------------------------------------------------------------
+#   any    — хэн ч ямар ч оюутны код бичээд орно. Гадны сургалт,
+#            семинар, кодгүй оролцогчдод тохиромжтой (ХУУЧИН зан төлөв).
+#   roster — багшийн урьдчилан бүртгэсэн кодоор л орно. Жинхэнэ ангийн
+#            шалгалтад хуурамч кодоор дахин оролдохыг хаана.
+# =====================================================================
+ENTRY_MODES = ("any", "roster")
+
+ENTRY_MODE_LABELS = {
+    "any": "Нээлттэй",
+    "roster": "Зөвхөн жагсаалтаас",
+}
+
+
+def entry_mode(test) -> str:
+    """Тестийн нэвтрэх горимыг найдвартай уншина. Танихгүй утга бол 'any'
+    — хуучин, багана байхгүй сангуудад урьдын зан төлөв хэвээр үлдэнэ."""
+    value = (test.get("entry_mode") if hasattr(test, "get") else None) or "any"
+    value = str(value).strip().lower()
+    return value if value in ENTRY_MODES else "any"
+
+
+_ROSTER_HEADERS = {"код", "code", "student_code", "оюутны код", "нэр", "name",
+                   "full_name", "овог нэр"}
+
+
+def parse_student_roster(raw: str) -> tuple[list, list]:
+    """Олон мөр текстээс оюутны жагсаалт уншина.
+
+    Мөр бүр `код` эсвэл `код,нэр` хэлбэртэй. Таслал, цэг таслал, табыг
+    бүгдийг нь салгагч болгон хүлээн авна — багш Excel-ээс шууд хуулж
+    буулгахад ямар салгагч орж ирэхийг урьдчилан мэдэх боломжгүй.
+
+    Хоосон мөр, толгой мөрийг алгасна. Ижил код давтагдвал эхнийхийг нь
+    авч, үлдсэнийг алдаа болгон буцаана.
+
+    Буцаах: (мөрүүд, алдаанууд). Мөр бүр:
+        {"student_code": ..., "normalized": ..., "full_name": ...}
+    """
+    rows, errors, seen = [], [], set()
+    for lineno, line in enumerate((raw or "").splitlines(), start=1):
+        line = line.strip()
+        if not line:
+            continue
+        parts = [p.strip() for p in re.split(r"[,;\t]", line) if p.strip()]
+        if not parts:
+            continue
+        if parts[0].strip().lower() in _ROSTER_HEADERS:
+            continue          # Excel-ийн толгой мөр
+        code = parts[0]
+        name = parts[1] if len(parts) > 1 else ""
+        norm = normalize_student_code(code)
+        if not norm:
+            errors.append(f"{lineno}-р мөр: оюутны код уншигдсангүй.")
+            continue
+        if norm in seen:
+            errors.append(f"{lineno}-р мөр: «{code}» код давхардсан тул алгаслаа.")
+            continue
+        seen.add(norm)
+        rows.append({"student_code": code, "normalized": norm,
+                     "full_name": name or code})
+    if not rows and not errors:
+        errors.append("Жагсаалт хоосон байна.")
+    return rows, errors
+
+
 def validate_student_info(full_name: str, email: str, student_code: str, class_group_id) -> list:
     """
     Оюутны бүртгэлийн формын шалгалт.

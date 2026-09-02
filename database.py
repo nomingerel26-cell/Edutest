@@ -201,6 +201,13 @@ def migrate(conn) -> list:
         execute(conn, "ALTER TABLE questions ADD COLUMN option_e TEXT NOT NULL DEFAULT ''")
         done.append("questions.option_e нэмэв")
 
+    # --- 5. tests.entry_mode — жагсаалтаар хязгаарлах горим ---
+    # Анхдагч 'any' тул хуучин бүх тест урьдын адил нээлттэй хэвээр үлдэнэ.
+    tcols = _columns(conn, "tests")
+    if tcols and "entry_mode" not in tcols:
+        execute(conn, "ALTER TABLE tests ADD COLUMN entry_mode TEXT NOT NULL DEFAULT 'any'")
+        done.append("tests.entry_mode нэмэв")
+
     conn.commit()
     return done
 
@@ -507,6 +514,32 @@ def get_question(conn, question_id: int):
 # =====================================================================
 # Таних түлхүүр: (class_group_id, normalized_student_code) — схемд UNIQUE.
 # Имэйл нь түлхүүр БИШ, заавал ч биш.
+def list_students(conn, class_group_id: int) -> list:
+    """Бүлгийн оюутны жагсаалт, тус бүрийн өгсөн тестийн тоотой.
+
+    `attempt_count` нь устгахад аюулгүй эсэхийг шийдэхэд хэрэгтэй.
+    """
+    return fetch_all(
+        conn,
+        """SELECT s.*,
+                  (SELECT COUNT(*) FROM attempts a
+                    WHERE a.student_id = s.id AND a.submitted_at IS NOT NULL)
+                  AS attempt_count
+             FROM students s
+            WHERE s.class_group_id = ?
+            ORDER BY s.full_name""",
+        (class_group_id,),
+    )
+
+
+def delete_student(conn, student_id: int) -> None:
+    execute(conn, "DELETE FROM students WHERE id = ?", (student_id,))
+
+
+def set_test_entry_mode(conn, test_id: int, entry_mode: str) -> None:
+    execute(conn, "UPDATE tests SET entry_mode = ? WHERE id = ?", (entry_mode, test_id))
+
+
 def get_student_by_code(conn, class_group_id: int, normalized_student_code: str):
     return fetch_one(
         conn,

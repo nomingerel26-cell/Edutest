@@ -117,6 +117,45 @@
   </div>
 </div>
 
+{# ================= 1b. Хэн тест өгөх вэ ================= #}
+<div class="card">
+  <div class="card-head"><h3 class="section-title">Хэн тест өгөх вэ</h3></div>
+  <div class="card-body">
+    {% set mode = entry_mode(test) %}
+    <form method="post" action="{{ url_for('set_entry_mode', test_id=test.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="chips" role="radiogroup" aria-label="Нэвтрэх горим">
+        <label class="chip {{ 'active' if mode == 'any' }}">
+          <input type="radio" name="entry_mode" value="any"
+                 {% if mode == 'any' %}checked{% endif %}
+                 style="position:absolute;opacity:0;width:0;height:0;">
+          Нээлттэй
+        </label>
+        <label class="chip {{ 'active' if mode == 'roster' }}">
+          <input type="radio" name="entry_mode" value="roster"
+                 {% if mode == 'roster' %}checked{% endif %}
+                 style="position:absolute;opacity:0;width:0;height:0;">
+          Зөвхөн жагсаалтаас
+        </label>
+      </div>
+      <p class="hint" style="margin:10px 0;">
+        <strong>Нээлттэй</strong> — хэн ч ямар ч оюутны код бичээд орно.
+        Гадны сургалт, семинар, кодгүй оролцогчдод.<br>
+        <strong>Зөвхөн жагсаалтаас</strong> — багшийн урьдчилан бүртгэсэн
+        кодоор л орно. Хуурамч кодоор дахин оролдох замыг хаана.
+      </p>
+      {% if mode == 'roster' and not roster_total %}
+        {{ alert('warning', 'Холбогдох бүлгийн жагсаалт ХООСОН байна — одоогоор
+                 хэн ч энэ тестийг өгч чадахгүй. Ангийн бүлэг рүү орж оюутнуудаа
+                 нэмнэ үү.') }}
+      {% elif mode == 'roster' %}
+        <p class="hint">Жагсаалтад <strong>{{ roster_total }}</strong> оюутан бүртгэлтэй.</p>
+      {% endif %}
+      <button class="btn" type="submit">Хадгалах</button>
+    </form>
+  </div>
+</div>
+
 {# ================= 2. Асуултууд ================= #}
 <div class="card">
   <div class="card-head">

@@ -43,7 +43,10 @@
         <tbody>
         {% for gr in groups %}
           <tr>
-            <td data-label="Нэр"><strong>{{ gr.name }}</strong></td>
+            <td data-label="Нэр">
+              <a href="{{ url_for('group_detail', group_id=gr.id) }}">
+                <strong>{{ gr.name }}</strong></a>
+            </td>
             <td class="n" data-label="Оюутны тоо">{{ gr.student_count }}</td>
             <td class="actions">
               {{ delete_form(url_for('delete_group', group_id=gr.id),
