@@ -152,6 +152,104 @@ class RosterFlowTests(unittest.TestCase):
                          data={"csrf_token": self.token()}, follow_redirects=True)
         self.assertEqual(self.roster(), [])
 
+    # ---- оюутны мэдээлэл засах ----
+
+    def _add_one(self, roster="B230101, Анхны Нэр"):
+        self.client.post(f"/groups/{self.group_id}/students",
+                         data={"csrf_token": self.token(), "roster": roster},
+                         follow_redirects=True)
+        return self.roster()[0]["id"]
+
+    def _edit(self, sid, name, code):
+        return self.client.post(f"/students/{sid}/edit", data={
+            "csrf_token": self.token(), "full_name": name, "student_code": code,
+        }, follow_redirects=True)
+
+    def test_edit_name_only(self):
+        sid = self._add_one()
+        self._edit(sid, "Зассан Нэр", "B230101")
+        row = self.roster()[0]
+        self.assertEqual(row["full_name"], "Зассан Нэр")
+        self.assertEqual(row["normalized_student_code"], "B230101")
+
+    def test_edit_code_updates_normalized_form(self):
+        sid = self._add_one()
+        self._edit(sid, "Анхны Нэр", "b23 0999")
+        row = self.roster()[0]
+        self.assertEqual(row["student_code"], "b23 0999")
+        self.assertEqual(row["normalized_student_code"], "B230999")
+
+    def test_duplicate_code_within_group_is_refused(self):
+        self._add_one("B230101, Нэгдүгээр")
+        self.client.post(f"/groups/{self.group_id}/students",
+                         data={"csrf_token": self.token(), "roster": "B230102, Хоёрдугаар"},
+                         follow_redirects=True)
+        rows = {r["normalized_student_code"]: r["id"] for r in self.roster()}
+        r = self._edit(rows["B230102"], "Хоёрдугаар", "B230101")
+        self.assertIn("аль хэдийн бүртгэлтэй", r.data.decode())
+        after = {r_["id"]: r_["normalized_student_code"] for r_ in self.roster()}
+        self.assertEqual(after[rows["B230102"]], "B230102", "код солигдох ёсгүй байсан")
+
+    def test_empty_name_is_refused(self):
+        sid = self._add_one()
+        r = self._edit(sid, "", "B230101")
+        self.assertIn("Овог нэрийг бүтнээр нь", r.data.decode())
+        self.assertEqual(self.roster()[0]["full_name"], "Анхны Нэр")
+
+    def test_changing_code_keeps_pre_post_matching_intact(self):
+        """attempts.match_key нь оролдлого үүсэх мөчид ХУУЛБАРЛАГДАН
+        хадгалагддаг. Оюутан Оролтоо өгсний ДАРАА код нь засагдвал,
+        Гаралтын оролдлого нь ШИНЭ түлхүүр авна. Хуучин оролдлогуудыг
+        хамт шинэчлэхгүй бол нэг оюутан хоёр мөр болж сална.
+        """
+        conn = db.connect(self.db_path)
+        now = domain.now_iso()
+        pair_id = db.create_pair(conn, self.course_id, "хос", now)
+        tests = {}
+        for kind in ("pre", "post"):
+            tests[kind] = db.create_test(conn, self.course_id, pair_id, None,
+                                         f"T {kind}", kind, "open",
+                                         f"MK{kind.upper()}1", now)
+        sid = db.create_student(conn, self.group_id, "Болд", "B230101",
+                                "B230101", None, now)
+        # 1. Оролтоо ХУУЧИН кодоор өгнө.
+        aid = db.create_attempt(conn, tests["pre"], pair_id, sid,
+                                domain.build_match_key(self.group_id, "B230101"),
+                                "Болд", now)
+        db.finish_attempt(conn, aid, 40, 100, 40, now)
+        conn.commit()
+        conn.close()
+
+        # 2. Багш кодыг нь засна.
+        self._edit(sid, "Болд", "B239999")
+
+        # 3. Гаралтаа ШИНЭ кодоор өгнө — апп ингэж түлхүүр үүсгэдэг.
+        conn = db.connect(self.db_path)
+        student = db.get_student(conn, sid)
+        aid = db.create_attempt(
+            conn, tests["post"], pair_id, sid,
+            domain.build_match_key(self.group_id, student["normalized_student_code"]),
+            "Болд", domain.now_iso())
+        db.finish_attempt(conn, aid, 80, 100, 80, domain.now_iso())
+        conn.commit()
+        try:
+            rows = domain.match_pre_post(db.list_results(conn, tests["pre"]),
+                                         db.list_results(conn, tests["post"]),
+                                         pair_id)
+        finally:
+            conn.close()
+
+        self.assertEqual(len(rows), 1, "код солиход нэг оюутан хоёр мөр болж салав")
+        self.assertEqual((rows[0]["pre_percent"], rows[0]["post_percent"]), (40, 80))
+
+    def test_other_teacher_cannot_edit_a_student(self):
+        sid = self._add_one()
+        self.login("o@r.mn", "other1234")
+        self.assertEqual(self.client.get(f"/students/{sid}/edit").status_code, 403)
+        r = self.client.post(f"/students/{sid}/edit", data={
+            "csrf_token": self.token(), "full_name": "Хулгай", "student_code": "X1"})
+        self.assertEqual(r.status_code, 403)
+
     def test_other_teacher_cannot_view_or_edit_roster(self):
         self.login("o@r.mn", "other1234")
         self.assertEqual(self.client.get(f"/groups/{self.group_id}").status_code, 403)

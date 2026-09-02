@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, alert with context %}
+{% block title %}{{ student.full_name }} — засах{% endblock %}
+{% block page_title %}Оюутны мэдээлэл засах{% endblock %}
+{% block breadcrumb %}
+<p class="crumb">
+  <a href="{{ url_for('courses') }}">Хичээл ба анги</a> /
+  <a href="{{ url_for('group_detail', group_id=group.id) }}">{{ group.name }}</a> /
+  Засах
+</p>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:620px;">
+  <div class="card-head">
+    <h3 class="section-title">{{ student.full_name }}</h3>
+    <div class="spacer"></div>
+    {% if attempt_count %}
+      <span class="badge open">{{ attempt_count }} тест өгсөн</span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    <form method="post" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div class="field">
+        <label for="full_name">Овог нэр <span class="req">*</span></label>
+        <input type="text" id="full_name" name="full_name"
+               value="{{ form.full_name }}" required>
+      </div>
+
+      <div class="field" style="max-width:280px;">
+        <label for="student_code">Оюутны код <span class="req">*</span></label>
+        <input type="text" id="student_code" name="student_code"
+               value="{{ form.student_code }}" autocomplete="off" required>
+        <p class="hint">
+          Зай, том жижиг үсгийг үл тооно — <code>b23 0101</code> ба
+          <code>B230101</code> хоёр ижил код.
+        </p>
+      </div>
+
+      {% if attempt_count %}
+        {{ alert('warning', 'Оюутны код нь Оролт/Гаралтыг тааруулах түлхүүр.
+                 Солих тохиолдолд өмнөх ' ~ attempt_count ~ ' оролдлогын түлхүүрийг
+                 хамт шинэчилнэ — үр дүн алдагдахгүй, харьцуулалт хэвээр ажиллана.') }}
+      {% endif %}
+
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn" type="submit">Хадгалах</button>
+        <a class="btn btn-ghost" href="{{ url_for('group_detail', group_id=group.id) }}">
+          Болих</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

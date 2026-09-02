@@ -528,6 +528,62 @@ def add_students(group_id):
     return redirect(url_for("group_detail", group_id=group_id))
 
 
+@app.route("/students/<int:student_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_student(student_id):
+    """Жагсаалт дахь оюутны нэр, кодыг засна.
+
+    Код нь Оролт/Гаралтын ТААРУУЛАЛТЫН ТҮЛХҮҮР тул солиход
+    `attempts.match_key`-г хамт шинэчилнэ — эс бөгөөс тухайн оюутны
+    хуучин ба шинэ оролдлого хоёр өөр хүн мэт сална.
+    """
+    student = db.get_student(g.conn, student_id)
+    if not student:
+        abort(404)
+    group = db.get_group(g.conn, student["class_group_id"])
+    owned_course(group["course_id"])
+
+    attempt_count = db.count_student_attempts(g.conn, student_id)
+    form = {"full_name": student["full_name"], "student_code": student["student_code"]}
+
+    if request.method == "POST":
+        form = {
+            "full_name": (request.form.get("full_name") or "").strip(),
+            "student_code": (request.form.get("student_code") or "").strip(),
+        }
+        norm = domain.normalize_student_code(form["student_code"])
+        errors = []
+        if len(form["full_name"]) < 2:
+            errors.append("Овог нэрийг бүтнээр нь бичнэ үү.")
+        if not norm:
+            errors.append("Оюутны код хоосон байна.")
+        else:
+            clash = db.get_student_by_code(g.conn, group["id"], norm)
+            if clash and clash["id"] != student_id:
+                errors.append(f"«{clash['full_name']}» энэ кодтой аль хэдийн "
+                              f"бүртгэлтэй байна.")
+        if errors:
+            for e in errors:
+                flash(e, "error")
+            return render_template("student_edit.html", student=student, group=group,
+                                   form=form, attempt_count=attempt_count), 400
+
+        code_changed = norm != student["normalized_student_code"]
+        db.update_student(g.conn, student_id, form["full_name"],
+                          form["student_code"], norm)
+        if code_changed:
+            moved = db.relabel_attempt_match_keys(
+                g.conn, student_id, domain.build_match_key(group["id"], norm))
+            if moved:
+                flash(f"Код солигдсон тул {moved} оролдлогын тааруулалтын "
+                      f"түлхүүрийг хамт шинэчиллээ.", "info")
+        flash(f"«{form['full_name']}» шинэчлэгдлээ.", "success")
+        return redirect(url_for("group_detail", group_id=group["id"]))
+
+    return render_template("student_edit.html", student=student, group=group,
+                           form=form, attempt_count=attempt_count)
+
+
 @app.route("/students/<int:student_id>/delete", methods=["POST"])
 @login_required
 def delete_student(student_id):

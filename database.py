@@ -559,6 +559,41 @@ def list_students(conn, class_group_id: int) -> list:
     )
 
 
+def count_student_attempts(conn, student_id: int) -> int:
+    """Оюутны ДУУСГАСАН оролдлогын тоо — код солиход анхааруулахад."""
+    row = fetch_one(conn, "SELECT COUNT(*) AS v FROM attempts "
+                          "WHERE student_id = ? AND submitted_at IS NOT NULL",
+                    (student_id,))
+    return int((row or {}).get("v") or 0)
+
+
+def update_student(conn, student_id, full_name, student_code,
+                   normalized_student_code) -> None:
+    execute(
+        conn,
+        """UPDATE students
+              SET full_name = ?, student_code = ?, normalized_student_code = ?
+            WHERE id = ?""",
+        (full_name, student_code, normalized_student_code, student_id),
+    )
+
+
+def relabel_attempt_match_keys(conn, student_id: int, match_key: str) -> int:
+    """Оюутны БҮХ оролдлогын match_key-г шинэ утгаар солино.
+
+    `attempts.match_key` нь оролдлого үүсэх мөчид ХУУЛБАРЛАГДАН хадгалагддаг
+    бөгөөд Оролт/Гаралтын тааруулалт түүн дээр тулгуурладаг. Оюутны кодыг
+    зассан хэрнээ энийг шинэчлэхгүй бол хуучин оролдлогууд хуучин
+    түлхүүртэй, шинэ нь өөр түлхүүртэй болж, нэг оюутны түүх хоёр хүн мэт
+    хуваагдана.
+
+    Солигдсон мөрийн тоог буцаана.
+    """
+    cur = execute(conn, "UPDATE attempts SET match_key = ? WHERE student_id = ?",
+                  (match_key, student_id))
+    return cur.rowcount
+
+
 def delete_student(conn, student_id: int) -> None:
     execute(conn, "DELETE FROM students WHERE id = ?", (student_id,))
 
