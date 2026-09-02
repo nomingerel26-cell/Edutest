@@ -147,7 +147,7 @@ class TestFullFlow(FlowTestCase):
         self.login()
         # Буруу форм — алдаа монголоор, асуулт нэмэгдэхгүй
         r = self.client.post(f"/tests/{FlowTestCase.pre_test_id}", data={
-            "text": "", "option_a": "", "option_b": "б", "option_c": "в", "option_d": "г",
+            "text": "", "option_a": "", "option_b": "б", "option_c": "в", "option_d": "г", "option_e": "г-э",
             "correct_option": "A", "score": "0",
         }, follow_redirects=True)
         body = self.html(r)
@@ -159,7 +159,7 @@ class TestFullFlow(FlowTestCase):
                 r = self.client.post(f"/tests/{test_id}", data={
                     "text": f"Асуулт {i} — үнэн үү?",
                     "option_a": "Зөв хариулт", "option_b": "Буруу 1",
-                    "option_c": "Буруу 2", "option_d": "Буруу 3",
+                    "option_c": "Буруу 2", "option_d": "Буруу 3", "option_e": "Буруу 3-э",
                     "correct_option": "A", "score": "2",
                 }, follow_redirects=True)
                 self.assertIn("Асуулт нэмэгдлээ.", self.html(r))

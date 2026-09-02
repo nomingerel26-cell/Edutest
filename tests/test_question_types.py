@@ -84,7 +84,7 @@ class TestQuestionTypes(unittest.TestCase):
         too_few = domain.validate_question("Асуулт", options, "A", 1, qtype="multi")
         self.assertTrue(any("хамгийн багадаа 2" in e for e in too_few))
 
-        all_of_them = domain.validate_question("Асуулт", options, "A,B,C,D", 1, qtype="multi")
+        all_of_them = domain.validate_question("Асуулт", options, "A,B,C,D,E", 1, qtype="multi")
         self.assertTrue(any("Бүх сонголт зөв" in e for e in all_of_them))
 
         good = domain.validate_question("Асуулт", options, "A,C", 1, qtype="multi")
@@ -104,7 +104,7 @@ class TestQuestionTypes(unittest.TestCase):
     def _correct_match_answer(self, question_id):
         order = domain.match_display_order(question_id)
         return domain.format_match_answer(
-            {key: order.index(i) + 1 for i, key in enumerate(domain.OPTION_KEYS)}
+            {key: order.index(i) + 1 for i, key in enumerate(domain.MATCH_OPTION_KEYS)}
         )
 
     def test_match_all_pairs_correct_earns_full_score(self):
@@ -160,7 +160,7 @@ class TestMixedScoring(unittest.TestCase):
             101: "B",        # зөв  -> 2
             102: "A",        # дутуу -> 0
             103: domain.format_match_answer(
-                {k: order.index(i) + 1 for i, k in enumerate(domain.OPTION_KEYS)}),  # зөв -> 5
+                {k: order.index(i) + 1 for i, k in enumerate(domain.MATCH_OPTION_KEYS)}),  # зөв -> 5
         }
         result = domain.score_attempt(questions, answers)
         self.assertEqual(result["total_score"], 7)

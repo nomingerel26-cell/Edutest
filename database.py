@@ -192,6 +192,15 @@ def migrate(conn) -> list:
         execute(conn, "PRAGMA foreign_keys = ON")
         done.append("answers.selected_option-ийн CHECK-ийг арилгав")
 
+    # --- 4. questions.option_e — 5 дахь сонголт ---
+    # Дээрх хүснэгт дахин барих алхмууд option_e-гүй хуулбар үүсгэдэг тул
+    # энэ алхам ЗААВАЛ тэднээс хойш байх ёстой, эс бөгөөс багана алга болно.
+    # Харгалзуулах төрөл 4 мөр хэвээр учир match_e НЭМЭХГҮЙ.
+    cols = _columns(conn, "questions")
+    if cols and "option_e" not in cols:
+        execute(conn, "ALTER TABLE questions ADD COLUMN option_e TEXT NOT NULL DEFAULT ''")
+        done.append("questions.option_e нэмэв")
+
     conn.commit()
     return done
 
@@ -444,13 +453,16 @@ def create_question(conn, test_id, order_no, text, options, correct_option, scor
     return insert_returning_id(
         conn,
         """INSERT INTO questions (test_id, order_no, text, qtype,
-                                  option_a, option_b, option_c, option_d,
+                                  option_a, option_b, option_c, option_d, option_e,
                                   match_a, match_b, match_c, match_d,
                                   correct_option, score)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             test_id, order_no, text, qtype,
-            options["A"], options["B"], options["C"], options["D"],
+            # .get(...) — харгалзуулах асуулт E-гүй ирдэг, мөн хуучин
+            # дуудлагууд (seed.py, тестүүд) зөвхөн A-D дамжуулдаг.
+            options.get("A") or "", options.get("B") or "", options.get("C") or "",
+            options.get("D") or "", options.get("E") or "",
             matches.get("A"), matches.get("B"), matches.get("C"), matches.get("D"),
             correct_option, score,
         ),
@@ -753,11 +765,13 @@ def update_question(conn, question_id, text, options, correct_option, score,
         """UPDATE questions
               SET text = ?, qtype = ?,
                   option_a = ?, option_b = ?, option_c = ?, option_d = ?,
+                  option_e = ?,
                   match_a = ?, match_b = ?, match_c = ?, match_d = ?,
                   correct_option = ?, score = ?
             WHERE id = ?""",
         (text, qtype,
-         options["A"], options["B"], options["C"], options["D"],
+         options.get("A") or "", options.get("B") or "", options.get("C") or "",
+         options.get("D") or "", options.get("E") or "",
          matches.get("A"), matches.get("B"), matches.get("C"), matches.get("D"),
          correct_option, score, question_id),
     )
@@ -801,13 +815,26 @@ def renumber_questions(conn, test_id: int) -> None:
             execute(conn, "UPDATE questions SET order_no = ? WHERE id = ?", (index, q["id"]))
 
 
+def delete_test_questions(conn, test_id: int) -> int:
+    """Тестийн БҮХ асуултыг устгана. Устгасан тоог буцаана.
+
+    answers.question_id нь ON DELETE CASCADE тул энэ дуудлага тухайн
+    асуултуудад өгсөн хариултыг ХАМТ устгана. Оролдлого бүртгэгдсэн
+    тест дээр дуудахаас өмнө `count_test_attempts`-ээр шалгана уу.
+    """
+    rows = list_questions(conn, test_id)
+    execute(conn, "DELETE FROM questions WHERE test_id = ?", (test_id,))
+    return len(rows)
+
+
 def copy_questions(conn, source_test_id: int, target_test_id: int) -> int:
     """Нэг тестийн асуултуудыг нөгөө тест рүү хуулна. Хуулсан тоог буцаана."""
     rows = list_questions(conn, source_test_id)
     for index, q in enumerate(rows, start=1):
         create_question(
             conn, target_test_id, index, q["text"],
-            {"A": q["option_a"], "B": q["option_b"], "C": q["option_c"], "D": q["option_d"]},
+            {"A": q["option_a"], "B": q["option_b"], "C": q["option_c"],
+             "D": q["option_d"], "E": q.get("option_e") or ""},
             q["correct_option"], q["score"],
             qtype=q.get("qtype") or "single",
             matches={"A": q.get("match_a"), "B": q.get("match_b"),

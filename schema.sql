@@ -99,6 +99,10 @@ CREATE TABLE IF NOT EXISTS questions (
     option_b       TEXT NOT NULL,
     option_c       TEXT NOT NULL,
     option_d       TEXT NOT NULL,
+    -- 5 дахь сонголт. Нэг/олон сонголттой асуултад хэрэглэнэ; харгалзуулах
+    -- нь 4 мөр хэвээр тул match_e багана байхгүй. DEFAULT '' — хуучин
+    -- мөрүүд миграцаар нэмэгдэхэд утга шаардахгүй.
+    option_e       TEXT NOT NULL DEFAULT '',
     match_a        TEXT,
     match_b        TEXT,
     match_c        TEXT,

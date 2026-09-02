@@ -296,11 +296,12 @@
     var panels = $$("[data-qtype-panel]");
     if (!chips.length || !panels.length) return;
 
+    var LETTERS = ["A", "B", "C", "D", "E"];
     var titleEl = $("[data-options-title]");
     var hintEl = $("[data-options-hint]");
     var COPY = {
-      single: ["Хариултын сонголтууд", "Дөрвөн сонголтоо бичээд доор зөв хариултаа заана."],
-      multi:  ["Хариултын сонголтууд", "Дөрвөн сонголтоо бичээд доор зөв хариултуудаа тэмдэглэнэ."],
+      single: ["Хариултын сонголтууд", "Таван сонголтоо (A-E) бичээд доор зөв хариултаа заана."],
+      multi:  ["Хариултын сонголтууд", "Таван сонголтоо (1-5) бичээд доор зөв хариултуудаа тэмдэглэнэ."],
       match:  ["Зүүн талын зүйлс", "Харгалзуулах зүйлсээ бичнэ. Баруун талын хосыг доор оруулна."]
     };
 
@@ -322,6 +323,25 @@
       $$('[name^="match_"]').forEach(function (el) {
         el.required = type === "match";
       });
+      // Сонголтын шошго: олон сонголттой -> 1..5, бусад -> A..E.
+      // name/value өөрчлөгдөхгүй — зөвхөн харагдах текст солигдоно.
+      LETTERS.forEach(function (letter, index) {
+        var el = $('[data-opt-label="' + letter + '"]');
+        if (el) el.textContent = (type === "multi") ? String(index + 1) : letter;
+      });
+
+      // Харгалзуулах нь 4 мөр хэвээр тул E сонголтыг нууна. disabled
+      // болгосноор далдалсан талбар required-ээс болж форм тээглэхгүй.
+      var eField = $('[data-opt-field="E"]');
+      if (eField) {
+        var hideE = (type === "match");
+        eField.style.display = hideE ? "none" : "";
+        $$("input", eField).forEach(function (el) {
+          el.disabled = hideE;
+          el.required = !hideE;
+        });
+      }
+
       if (titleEl && COPY[type]) titleEl.textContent = COPY[type][0];
       if (hintEl && COPY[type]) hintEl.textContent = COPY[type][1];
     }

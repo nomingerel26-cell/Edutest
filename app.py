@@ -60,6 +60,10 @@ app.config.update(
 app.config["EDUTEST_DEV"] = os.environ.get("EDUTEST_ENV", "development") != "production"
 
 app.jinja_env.globals["OPTION_KEYS"] = domain.OPTION_KEYS
+app.jinja_env.globals["MATCH_OPTION_KEYS"] = domain.MATCH_OPTION_KEYS
+app.jinja_env.globals["option_keys"] = domain.option_keys
+app.jinja_env.globals["option_label"] = domain.option_label
+app.jinja_env.globals["visible_option_keys"] = domain.visible_option_keys
 app.jinja_env.globals["QUESTION_TYPES"] = domain.QUESTION_TYPES
 app.jinja_env.globals["QUESTION_TYPE_LABELS"] = domain.QUESTION_TYPE_LABELS
 app.jinja_env.globals["question_type"] = domain.question_type
@@ -479,6 +483,59 @@ def create_pair(course_id):
     return redirect(url_for("course_detail", course_id=course_id))
 
 
+def _question_signature(rows) -> list:
+    """Хоёр тестийн асуулт ижил эсэхийг харьцуулах түлхүүр.
+
+    id, order_no зэрэг тестээс хамаарах багана ОРОХГҮЙ — зөвхөн агуулга.
+    """
+    return [(
+        r["text"], r.get("qtype") or "single", r["correct_option"], r["score"],
+        r["option_a"], r["option_b"], r["option_c"], r["option_d"],
+        r.get("option_e") or "",
+        r.get("match_a"), r.get("match_b"), r.get("match_c"), r.get("match_d"),
+    ) for r in rows]
+
+
+def _sync_pair_questions(test) -> tuple[str, str] | None:
+    """Оролтын тест нээгдэхэд асуултыг ижил хосын гаралтын тест рүү хуулна.
+
+    Оролт/гаралт хоёр ЯГ ИЖИЛ асуулттай байх нь зорилготой — ахиц (Δ)
+    хэмжихийн тулд хоёр хэмжилт ижил хэрэглүүрээр хийгдэх ёстой.
+
+    Буцаах: (мессеж, төрөл) эсвэл хийх зүйлгүй бол None.
+    """
+    if test["kind"] != "pre" or not test["pair_id"]:
+        return None
+    post = db.get_pair_tests(g.conn, test["pair_id"]).get("post")
+    if not post:
+        return None
+
+    source = db.list_questions(g.conn, test["id"])
+    if not source:
+        return None
+
+    existing = db.list_questions(g.conn, post["id"])
+    if _question_signature(existing) == _question_signature(source):
+        return None  # аль хэдийн ижил — дэмий бичихгүй
+
+    # Оролдлого бүртгэгдсэн бол асуултыг СОЛИХГҮЙ: асуулт устахад
+    # answers мөрүүд cascade-аар дагаж устаж, оюутны үр дүн алга болно.
+    if existing and db.count_test_attempts(g.conn, post["id"]):
+        return (f"«{post['title']}» дээр оюутны оролдлого бүртгэгдсэн тул "
+                f"асуултыг хуулаагүй. Шаардлагатай бол гараар шинэчилнэ үү.",
+                "error")
+
+    replaced = db.delete_test_questions(g.conn, post["id"]) if existing else 0
+    copied = db.copy_questions(g.conn, test["id"], post["id"])
+    g.conn.commit()
+
+    if replaced:
+        return (f"«{post['title']}» руу {copied} асуулт хуулж, хуучин "
+                f"{replaced} асуултыг сольлоо.", "success")
+    return (f"«{post['title']}» руу {copied} асуулт хуулагдлаа. Оролт/гаралт "
+            f"одоо ижил асуулттай боллоо.", "success")
+
+
 @app.route("/tests/<int:test_id>/status", methods=["POST"])
 @login_required
 def change_test_status(test_id):
@@ -493,6 +550,10 @@ def change_test_status(test_id):
     db.set_test_status(g.conn, test_id, status)
     labels = {"draft": "Ноорог", "open": "Нээлттэй", "closed": "Хаагдсан"}
     flash(f"«{test['title']}» тестийн төлөв: {labels[status]}.", "success")
+    if status == "open":
+        synced = _sync_pair_questions(test)
+        if synced:
+            flash(synced[0], synced[1])
     return redirect(url_for("test_detail", test_id=test_id))
 
 
@@ -518,11 +579,12 @@ def _question_form(source) -> dict:
     }
     for key in domain.OPTION_KEYS:
         form[key] = (source.get(f"option_{key.lower()}") or "").strip()
-        form[f"match_{key}"] = (source.get(f"match_{key.lower()}") or "").strip()
-    if qtype != "match":
-        # Харгалзуулах биш бол баруун талын хосыг хадгалахгүй.
-        for key in domain.OPTION_KEYS:
-            form[f"match_{key}"] = ""
+    # Баруун талын хос зөвхөн харгалзуулах төрөлд, тэр нь 4 мөр хэвээр.
+    for key in domain.MATCH_OPTION_KEYS:
+        form[f"match_{key}"] = (
+            (source.get(f"match_{key.lower()}") or "").strip()
+            if qtype == "match" else ""
+        )
     if qtype == "match":
         form["correct_option"] = ""
     return form
@@ -531,7 +593,7 @@ def _question_form(source) -> dict:
 def _question_payload(form: dict) -> tuple:
     """Форм -> (options, matches) — database.py-д дамжуулах хэлбэр."""
     options = {k: form[k] for k in domain.OPTION_KEYS}
-    matches = {k: (form[f"match_{k}"] or None) for k in domain.OPTION_KEYS}
+    matches = {k: (form[f"match_{k}"] or None) for k in domain.MATCH_OPTION_KEYS}
     return options, matches
 
 
@@ -539,6 +601,7 @@ def _blank_question_form() -> dict:
     form = {"qtype": "single", "text": "", "correct_option": "A", "score": "1"}
     for key in domain.OPTION_KEYS:
         form[key] = ""
+    for key in domain.MATCH_OPTION_KEYS:
         form[f"match_{key}"] = ""
     return form
 

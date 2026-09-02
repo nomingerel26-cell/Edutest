@@ -123,7 +123,7 @@
           {% set qt = question_type(q) %}
           {% if qt == 'match' %}
             {# Багшид ЗӨВ хосыг эгнээгээр нь харуулна (оюутанд холино). #}
-            {% for key in OPTION_KEYS %}
+            {% for key in MATCH_OPTION_KEYS %}
               <div class="opt correct">
                 <span class="opt-key">{{ key }}</span>
                 <span>{{ q['option_' ~ key|lower] }}</span>
@@ -132,9 +132,10 @@
             {% endfor %}
           {% else %}
             {% set right = q.correct_option | option_set %}
-            {% for key in OPTION_KEYS %}
+            {# Хуучин 4 сонголттой асуултын хоосон E-г харуулахгүй. #}
+            {% for key in visible_option_keys(q) %}
               <div class="opt {{ 'correct' if key in right }}">
-                <span class="opt-key">{{ key }}</span>
+                <span class="opt-key">{{ option_label(qt, key) }}</span>
                 <span>{{ q['option_' ~ key|lower] }}</span>
                 {% if key in right %}<span class="opt-tag delta-up">Зөв хариулт</span>{% endif %}
               </div>

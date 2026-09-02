@@ -212,7 +212,7 @@ class TestQuestionEditing(FeatureTestCase):
         test_id, ids = self._fresh_test()
         r = self.client.post(f"/questions/{ids[0]}/edit", data={
             "text": "Шинэчилсэн асуулт", "option_a": "А сонголт", "option_b": "Б",
-            "option_c": "В", "option_d": "Г", "correct_option": "C", "score": "5",
+            "option_c": "В", "option_d": "Г", "option_e": "Г-э", "correct_option": "C", "score": "5",
         }, follow_redirects=True)
         self.assertEqual(r.status_code, 200)
 
@@ -228,11 +228,11 @@ class TestQuestionEditing(FeatureTestCase):
         test_id, ids = self._fresh_test()
         r = self.client.post(f"/questions/{ids[0]}/edit", data={
             "text": "", "option_a": "", "option_b": "б", "option_c": "в",
-            "option_d": "г", "correct_option": "Z", "score": "0",
+            "option_d": "г", "option_e": "г-э", "correct_option": "Z", "score": "0",
         })
         body = self.body(r)
         self.assertIn("Асуултын текст хоосон байна.", body)
-        self.assertIn("Зөв хариултыг A/B/C/D-ээс сонгоно уу.", body)
+        self.assertIn("Зөв хариултыг A/B/C/D/E-ээс сонгоно уу.", body)
 
     def test_move_question_swaps_order(self):
         self.login()

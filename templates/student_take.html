@@ -41,11 +41,12 @@
           <p class="hint" style="margin:0 0 10px;">
             Зөв хариулт хэд хэдэн байна. <strong>Бүгдийг нь</strong> сонгоно уу.
           </p>
-          {% for key in OPTION_KEYS %}
+          {% for key in visible_option_keys(q) %}
             <label class="opt {{ 'selected' if key in chosen }}">
+              {# value нь ҮРГЭЛЖ үсгэн түлхүүр; харагдах шошго нь дугаар. #}
               <input type="checkbox" name="q{{ q.id }}" value="{{ key }}"
                      {% if key in chosen %}checked{% endif %}>
-              <span class="opt-key">{{ key }}</span>
+              <span class="opt-key">{{ option_label('multi', key) }}</span>
               <span>{{ q['option_' ~ key|lower] }}</span>
             </label>
           {% endfor %}
@@ -58,8 +59,8 @@
           </p>
 
           <div class="match-right">
-            {% for slot in range(1, OPTION_KEYS|length + 1) %}
-              {% set src = OPTION_KEYS[order[slot - 1]] %}
+            {% for slot in range(1, MATCH_OPTION_KEYS|length + 1) %}
+              {% set src = MATCH_OPTION_KEYS[order[slot - 1]] %}
               <div class="match-item">
                 <span class="opt-key">{{ slot }}</span>
                 <span>{{ q['match_' ~ src|lower] }}</span>
@@ -67,13 +68,13 @@
             {% endfor %}
           </div>
 
-          {% for key in OPTION_KEYS %}
+          {% for key in MATCH_OPTION_KEYS %}
             <div class="match-row">
               <span class="opt-key">{{ key }}</span>
               <span class="match-label">{{ q['option_' ~ key|lower] }}</span>
               <select name="q{{ q.id }}_{{ key }}" aria-label="{{ key }}-ийн хос">
                 <option value="">—</option>
-                {% for slot in range(1, OPTION_KEYS|length + 1) %}
+                {% for slot in range(1, MATCH_OPTION_KEYS|length + 1) %}
                   <option value="{{ slot }}"
                     {% if chosen.get(key) == slot %}selected{% endif %}>{{ slot }}</option>
                 {% endfor %}
@@ -82,7 +83,7 @@
           {% endfor %}
 
         {% else %}
-          {% for key in OPTION_KEYS %}
+          {% for key in visible_option_keys(q) %}
             <label class="opt {{ 'selected' if picked.get(q.id) == key }}">
               <input type="radio" name="q{{ q.id }}" value="{{ key }}"
                      {% if picked.get(q.id) == key %}checked{% endif %}>

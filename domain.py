@@ -19,12 +19,57 @@ import secrets
 import unicodedata
 from datetime import datetime, timezone
 
-OPTION_KEYS = ("A", "B", "C", "D")
+# Хадгалалтын түлхүүр ҮРГЭЛЖ үсэг (A, B, ...). Дэлгэц дээрх шошго нь
+# асуултын төрлөөс хамаарна — `option_label` харна уу. Ингэснээр
+# дугаарлалт өөрчлөгдөхөд өгөгдлийн сан хөндөгдөхгүй.
+OPTION_KEYS = ("A", "B", "C", "D", "E")
+
+# Харгалзуулах асуулт 4 мөр хэвээр — зүүн/баруун талын хос тэнцүү байх
+# ёстой тул сонголтын тоог өсгөх нь энэ төрөлд утгагүй.
+MATCH_OPTION_KEYS = ("A", "B", "C", "D")
+
+
+def option_keys(qtype) -> tuple:
+    """Тухайн төрөлд хэдэн сонголт байхыг буцаана."""
+    return MATCH_OPTION_KEYS if qtype == "match" else OPTION_KEYS
+
+
+def option_label(qtype, key) -> str:
+    """Дэлгэц дээр харагдах шошго.
+
+    olon songolttoi (multi) -> '1'..'5'
+    бусад                   -> 'A'..'E'
+
+    Зөвхөн ХАРАГДАХ БАЙДАЛ. Хадгалалт, оноолт, экспорт бүгд үсгэн
+    түлхүүрээр ажиллана.
+    """
+    key = str(key).strip().upper()
+    if qtype == "multi" and key in OPTION_KEYS:
+        return str(OPTION_KEYS.index(key) + 1)
+    return key
+
+
+def visible_option_keys(question) -> list:
+    """Тухайн асуултад ХАРУУЛАХ сонголтын түлхүүрүүд.
+
+    Хуучин, 4 сонголттой үед үүссэн асуултын `option_e` хоосон байдаг.
+    Хоосон сонголтыг алгасахгүй бол оюутанд утгагүй хоосон мөр харагдана.
+    Зөвхөн ХАРУУЛАХАД зориулагдсан — форм болон оноолт хөндөгдөхгүй.
+    """
+    qtype = question_type(question)
+    get = question.get if hasattr(question, "get") else (lambda k, d=None: None)
+    return [k for k in option_keys(qtype)
+            if (get(f"option_{k.lower()}") or "").strip()]
+
+
+def option_label_list(qtype) -> str:
+    """Алдааны мессежид зориулсан 'A/B/C/D/E' эсвэл '1/2/3/4/5'."""
+    return "/".join(option_label(qtype, k) for k in option_keys(qtype))
 
 # =====================================================================
 # АСУУЛТЫН ТӨРӨЛ
 # ---------------------------------------------------------------------
-#   single — нэг зөв хариулт (A/B/C/D).       Хадгалалт: "A"
+#   single — нэг зөв хариулт (A/B/C/D/E).     Хадгалалт: "A"
 #   multi  — олон зөв хариулт.                Хадгалалт: "A,C"
 #   match  — харгалзуулах (A↔1, B↔2 гэх мэт). Хадгалалт: "A>2,B>1,C>4,D>3"
 #
@@ -77,7 +122,7 @@ def match_display_order(question_id) -> list:
     Жишээ: [2, 0, 3, 1] бол 1-р мөрөнд C-гийн хос, 2-т A-гийнх ...
     """
     digest = hashlib.sha256(str(question_id).encode("utf-8")).digest()
-    order = list(range(len(OPTION_KEYS)))
+    order = list(range(len(MATCH_OPTION_KEYS)))
     # Fisher-Yates, digest-ийн байтуудыг санамсаргүй эх болгон ашиглана.
     for i in range(len(order) - 1, 0, -1):
         j = digest[i] % (i + 1)
@@ -97,20 +142,20 @@ def parse_match_answer(raw) -> dict:
             continue
         left, _, right = chunk.partition(">")
         left = left.strip().upper()
-        if left not in OPTION_KEYS:
+        if left not in MATCH_OPTION_KEYS:
             continue
         try:
             slot = int(right.strip())
         except (TypeError, ValueError):
             continue
-        if 1 <= slot <= len(OPTION_KEYS):
+        if 1 <= slot <= len(MATCH_OPTION_KEYS):
             result[left] = slot
     return result
 
 
 def format_match_answer(mapping: dict) -> str:
     """{'B': 1, 'A': 2} -> 'A>2,B>1'"""
-    return ",".join(f"{k}>{mapping[k]}" for k in OPTION_KEYS if k in mapping)
+    return ",".join(f"{k}>{mapping[k]}" for k in MATCH_OPTION_KEYS if k in mapping)
 
 # =====================================================================
 # 1. Нууц үгийн хэшлэлт — ил задгай нууц үг ХЭЗЭЭ Ч хадгалагдахгүй
@@ -232,12 +277,12 @@ def grade_answer(question: dict, selected_option: str | None) -> tuple[bool, int
 
     if qtype == "match":
         answer = parse_match_answer(selected_option)
-        if len(answer) != len(OPTION_KEYS):
+        if len(answer) != len(MATCH_OPTION_KEYS):
             return False, 0
         order = match_display_order(question["id"])
         # order[slot-1] нь тухайн мөрөнд байгаа зүйл зүүн талын хэддүгээр
         # үсгийнх болохыг заана. Сонгосон мөр зөв үсэгтэй таарах ёстой.
-        for index, key in enumerate(OPTION_KEYS):
+        for index, key in enumerate(MATCH_OPTION_KEYS):
             slot = answer.get(key)
             if slot is None or order[slot - 1] != index:
                 return False, 0
@@ -460,30 +505,32 @@ def validate_question(text: str, options: dict, correct_option: str, score,
     if not (text or "").strip():
         errors.append("Асуултын текст хоосон байна.")
 
+    keys = option_keys(qtype)
     label = "Зүүн талын" if qtype == "match" else ""
-    for key in OPTION_KEYS:
+    for key in keys:
         if not (options.get(key) or "").strip():
-            errors.append(f"{label} {key} сонголтын текст хоосон байна.".strip())
+            shown = option_label(qtype, key)
+            errors.append(f"{label} {shown} сонголтын текст хоосон байна.".strip())
 
     if qtype == "single":
-        if (correct_option or "").strip().upper() not in OPTION_KEYS:
-            errors.append("Зөв хариултыг A/B/C/D-ээс сонгоно уу.")
+        if (correct_option or "").strip().upper() not in keys:
+            errors.append(f"Зөв хариултыг {option_label_list(qtype)}-ээс сонгоно уу.")
     elif qtype == "multi":
         picked = parse_option_set(correct_option)
         if len(picked) < 2:
             errors.append("Олон сонголттой асуултад хамгийн багадаа 2 зөв "
                           "хариулт сонгоно уу.")
-        elif len(picked) == len(OPTION_KEYS):
+        elif len(picked) == len(keys):
             errors.append("Бүх сонголт зөв бол асуулт утгагүй болно. "
                           "Дор хаяж нэг буруу хариулт үлдээнэ үү.")
     else:  # match
         matches = matches or {}
-        for key in OPTION_KEYS:
+        for key in keys:
             if not (matches.get(key) or "").strip():
                 errors.append(f"Баруун талын {key} хосын текст хоосон байна.")
-        values = [(matches.get(k) or "").strip().casefold() for k in OPTION_KEYS]
+        values = [(matches.get(k) or "").strip().casefold() for k in keys]
         filled = [v for v in values if v]
-        if len(filled) == len(OPTION_KEYS) and len(set(filled)) != len(OPTION_KEYS):
+        if len(filled) == len(keys) and len(set(filled)) != len(keys):
             errors.append("Баруун талын хосууд давхардсан байна. "
                           "Хос бүр өвөрмөц байх ёстой.")
 

@@ -37,11 +37,19 @@
   <p class="hint" data-options-hint></p>
 
   <div class="form-row">
+    {# Шошго нь төрлөөс хамаарна (multi -> 1..5, бусад -> A..E), гэхдээ
+       name/value нь ҮРГЭЛЖ үсгэн түлхүүр. JS төрөл сольсон үед зөвхөн
+       харагдах шошгыг сольдог — app.js, initQuestionType. #}
     {% for key in OPTION_KEYS %}
-      <div class="field">
-        <label for="opt{{ key }}">{{ key }} <span class="req">*</span></label>
+      <div class="field" data-opt-field="{{ key }}"
+           {% if form.qtype == 'match' and key == 'E' %}style="display:none;"{% endif %}>
+        <label for="opt{{ key }}">
+          <span data-opt-label="{{ key }}">{{ option_label(form.qtype, key) }}</span>
+          <span class="req">*</span>
+        </label>
         <input type="text" id="opt{{ key }}" name="option_{{ key|lower }}"
-               value="{{ form[key] }}" required>
+               value="{{ form[key] }}"
+               {% if form.qtype == 'match' and key == 'E' %}disabled{% else %}required{% endif %}>
       </div>
     {% endfor %}
   </div>
@@ -73,7 +81,7 @@
       <label class="opt {{ 'selected' if key in picked }}" style="flex:1 1 160px;margin:0;">
         <input type="checkbox" name="correct_options" value="{{ key }}"
                {% if key in picked %}checked{% endif %}>
-        <span class="opt-key">{{ key }}</span>
+        <span class="opt-key">{{ option_label('multi', key) }}</span>
         <span>сонголт зөв</span>
       </label>
     {% endfor %}
@@ -89,7 +97,7 @@
     зөв хариулт эгнээгээрээ таарахгүй. Бүх хос зөв үед л балл өгнө.
   </p>
   <div class="form-row">
-    {% for key in OPTION_KEYS %}
+    {% for key in MATCH_OPTION_KEYS %}
       <div class="field">
         <label for="match{{ key }}">{{ key }}-ийн хос <span class="req">*</span></label>
         <input type="text" id="match{{ key }}" name="match_{{ key|lower }}"

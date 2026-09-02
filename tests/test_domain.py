@@ -236,13 +236,13 @@ class TestMatchPrePost(unittest.TestCase):
 
 
 class TestValidation(unittest.TestCase):
-    OK_OPTIONS = {"A": "нэг", "B": "хоёр", "C": "гурав", "D": "дөрөв"}
+    OK_OPTIONS = {"A": "нэг", "B": "хоёр", "C": "гурав", "D": "дөрөв", "E": "тав"}
 
     def test_valid_question(self):
         self.assertEqual(domain.validate_question("Асуулт?", self.OK_OPTIONS, "B", 2), [])
 
     def test_missing_pieces_reported_in_mongolian(self):
-        errors = domain.validate_question("", {"A": "", "B": "х", "C": "х", "D": "х"}, "Z", 0)
+        errors = domain.validate_question("", {"A": "", "B": "х", "C": "х", "D": "х", "E": "х"}, "Z", 0)
         self.assertTrue(any("текст хоосон" in e for e in errors))
         self.assertTrue(any("A сонголтын" in e for e in errors))
         self.assertTrue(any("A/B/C/D" in e for e in errors))
