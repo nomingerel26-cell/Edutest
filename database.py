@@ -50,6 +50,27 @@ def connect(db_path: str | os.PathLike | None = None) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     # POSTGRES: гадаад түлхүүр үргэлж идэвхтэй тул энэ мөр хэрэггүй болно.
     conn.execute("PRAGMA foreign_keys = ON")
+
+    # --- Зэрэгцээ ажиллагаа -------------------------------------------
+    # WAL нь УРТ УНШИЛТ бичилттэй зэрэг явах үед хэрэгтэй. Анхдагч DELETE
+    # горимд уншигч бичигчийг блокладаг тул багш үр дүнгээ экспортлож
+    # байхад оюутны хариулт хүлээгддэг.
+    #
+    # Хэмжсэн (4 бичигч + урт уншилт, 3 удаа давтсан):
+    #   DELETE  нийт ~0.30s | илгээлтийн p95 ~10.6мс | хамгийн удаан ~270мс
+    #   WAL     нийт ~0.11s | илгээлтийн p95  ~1.0мс | хамгийн удаан  ~95мс
+    #
+    # ЗӨВХӨН бичилт зэрэгцэх тохиолдолд ялгаа ГАРААГҮЙ — тэнд WAL хэрэггүй.
+    # Файлын шинж чанар тул нэг л удаа тогтоно; дараагийн холболтууд
+    # үүнийг дахин тавихад нөлөөгүй.
+    #
+    # busy_timeout нь Python-ы sqlite3-д АЛЬ ХЭДИЙН 5000мс байдаг
+    # (connect(timeout=5.0) анхдагч). Энд ил бичсэн нь тэр анхдагчаас
+    # хамаарахгүй байх үүднээс — зан төлөв өөрчлөхгүй.
+    #
+    # POSTGRES: хоёулаа хэрэггүй болно — сервер өөрөө зохицуулна.
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA busy_timeout = 5000")
     return conn
 
 
@@ -219,8 +240,14 @@ def init_db(db_path: str | os.PathLike | None = None, *, drop_existing: bool = F
     """schema.sql-ийг ажиллуулж хүснэгтүүдийг үүсгэнэ (байхгүй бол),
     дараа нь хуучин сангийн миграцийг ажиллуулна."""
     target = Path(db_path or DB_PATH)
-    if drop_existing and target.exists():
-        target.unlink()
+    if drop_existing:
+        # WAL горимд хажууд нь -wal ба -shm файл үүсдэг. Зөвхөн үндсэн
+        # файлыг устгавал тэдгээрт үлдсэн гүйлгээ шинэ санд буцаж уншигдаж
+        # магадгүй тул гурвуулаа цэвэрлэнэ.
+        for suffix in ("", "-wal", "-shm"):
+            path = Path(str(target) + suffix)
+            if path.exists():
+                path.unlink()
     conn = connect(target)
     try:
         # POSTGRES: executescript -> conn.execute(schema_sql) (psycopg олон
