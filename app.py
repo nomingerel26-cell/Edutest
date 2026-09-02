@@ -127,38 +127,71 @@ def _bootstrap_admin(conn) -> None:
     хоёрын аль нэг нь тохируулаагүй бол ЮУ Ч ХИЙХГҮЙ — анхдагч нууц үгтэй
     админ автоматаар үүсгэвэл хэн ч нэвтэрч чадах эрсдэлтэй.
     """
-    if db.list_users(conn):
+    existing = db.list_users(conn)
+    if existing:
+        _log(f"Админ үүсгэхийг алгаслаа: DB-д {len(existing)} хэрэглэгч "
+             f"аль хэдийн байна ({existing[0]['email']}...).")
         return
     email = os.environ.get("EDUTEST_ADMIN_EMAIL", "").strip()
     password = os.environ.get("EDUTEST_ADMIN_PASSWORD", "")
     if not email or not password:
-        print("АНХААРУУЛГА: Өгөгдлийн санд хэрэглэгч алга. Админ үүсгэхийн "
-              "тулд EDUTEST_ADMIN_EMAIL, EDUTEST_ADMIN_PASSWORD хувьсагчийг "
-              "тохируулаад серверээ дахин эхлүүлнэ үү.")
+        _log("АНХААРУУЛГА: Өгөгдлийн санд хэрэглэгч алга. Админ үүсгэхийн "
+             "тулд EDUTEST_ADMIN_EMAIL, EDUTEST_ADMIN_PASSWORD хувьсагчийг "
+             "тохируулаад серверээ дахин эхлүүлнэ үү.")
         return
     name = os.environ.get("EDUTEST_ADMIN_NAME", "Админ")
     department = os.environ.get("EDUTEST_ADMIN_DEPARTMENT", "Сургалтын алба")
     db.create_user(conn, name, email, domain.hash_password(password),
                    "admin", department, domain.now_iso())
     conn.commit()
-    print(f"✓ Админ хэрэглэгч үүслээ: {email}")
+    _log(f"✓ Админ хэрэглэгч үүслээ: {email}")
+
+
+def _log(msg: str) -> None:
+    """Контейнерын log руу ШУУД бичнэ.
+
+    Python нь stdout нь TTY биш үед блокоор буферлэдэг тул контейнер
+    богино хугацаанд унтрахад эхлэлийн мессежүүд алдагддаг. Оношилгооны
+    мөрүүд ЗААВАЛ харагдах ёстой тул flush=True.
+    """
+    print(msg, flush=True)
+
+
+def _startup_diagnostics() -> None:
+    """Эхлэхэд орчны төлөвийг log-д бичнэ. НУУЦ УТГА ХЭВЛЭХГҮЙ —
+    зөвхөн хувьсагч тохируулагдсан эсэхийг л харуулна."""
+    _log("--- EduTest эхлэлийн оношилгоо ---")
+    _log(f"  DB зам          : {db.DB_PATH}")
+    _log(f"  DB файл байгаа  : {db.DB_PATH.exists()}")
+    for key in ("EDUTEST_DB", "EDUTEST_SECRET", "EDUTEST_ENV", "EDUTEST_HTTPS",
+                "EDUTEST_ADMIN_EMAIL", "EDUTEST_ADMIN_PASSWORD", "EDUTEST_ADMIN_NAME"):
+        raw = os.environ.get(key)
+        if raw is None:
+            state = "ТОХИРУУЛААГҮЙ"
+        elif key in ("EDUTEST_SECRET", "EDUTEST_ADMIN_PASSWORD"):
+            state = f"тохируулсан ({len(raw)} тэмдэгт)"
+        else:
+            state = repr(raw)
+        _log(f"  {key:<24}: {state}")
+    _log("----------------------------------")
 
 
 def _migrate_on_startup() -> None:
     # Сан байхгүй бол схемийг ЭНД үүсгэнэ. gunicorn зэрэг WSGI сервер нь
     # `__main__` блокийг ажиллуулдаггүй тул тэнд байгаа шалгалт хүрэлцэхгүй —
     # энэ функц import үед дуудагддаг учир байршуулсан орчинд ч ажиллана.
+    _startup_diagnostics()
     fresh = not db.DB_PATH.exists()
     if fresh:
-        print("edutest.db олдсонгүй — schema.sql-аас шинээр үүсгэж байна…")
+        _log(f"{db.DB_PATH} олдсонгүй — schema.sql-аас шинээр үүсгэж байна…")
         db.init_db()
     conn = db.connect()
     try:
         steps = db.migrate(conn)
         if steps:
-            print("Өгөгдлийн сангийн шинэчлэл хийгдлээ:")
+            _log("Өгөгдлийн сангийн шинэчлэл хийгдлээ:")
             for step in steps:
-                print("  •", step)
+                _log(f"  • {step}")
         # Зөвхөн `fresh` үед биш, хэрэглэгч огт байхгүй бүрд оролдоно.
         # Volume залгасан үед эхний boot-д админы хувьсагч тохируулаагүй
         # бол хоосон DB үлдэж, дахин хэзээ ч админ үүсгэх боломжгүй
