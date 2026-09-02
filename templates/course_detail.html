@@ -15,11 +15,16 @@
     </div>
     <p class="sub">{{ course.semester }} · Багш: {{ course.teacher_name }}</p>
   </div>
-  <div class="spacer"></div>
-  {# Хичээл устгах нь бүх тест, оюутан, үр дүнг авч явдаг тул зөвхөн админ. #}
+  {# .page-head дотор баруун тийш түлхэхэд `.actions` хэрэглэнэ —
+     `.spacer` нь зөвхөн .topbar / .card-head дотор margin-left:auto авдаг
+     тул энд ажиллахгүй (style.css). #}
   {% if current_user and current_user.role == 'admin' %}
-    <a class="btn btn-ghost btn-sm" href="{{ url_for('delete_course', course_id=course.id) }}">
-      {{ icon('trash', 15) }}<span>Хичээл устгах</span></a>
+    <div class="actions">
+      {# Хичээл устгах нь бүх тест, оюутан, үр дүнг авч явдаг тул зөвхөн админ. #}
+      <a class="btn btn-danger btn-sm"
+         href="{{ url_for('delete_course', course_id=course.id) }}">
+        {{ icon('trash', 15) }}<span>Хичээл устгах</span></a>
+    </div>
   {% endif %}
 </div>
 

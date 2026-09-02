@@ -95,6 +95,23 @@ class CourseDeleteTests(unittest.TestCase):
 
     # ---- баталгаажуулалт ----
 
+    def test_admin_sees_delete_button_on_course_page(self):
+        """Товч нь .page-head > .actions дотор байх ёстой — .spacer нь
+        энэ блокт margin-left:auto авдаггүй тул баруун тийш түлхэхгүй."""
+        self.login("a@d.mn", "admin1234")
+        body = self.client.get(f"/courses/{self.course_id}").data.decode()
+        self.assertIn("Хичээл устгах", body)
+        self.assertIn(f"/courses/{self.course_id}/delete", body)
+        head = body[body.find('class="page-head"'):]
+        head = head[:head.find("</div>\n\n")]
+        self.assertIn('class="actions"', head)
+
+    def test_teacher_does_not_see_delete_button(self):
+        self.login("t@d.mn", "teach1234")
+        body = self.client.get(f"/courses/{self.course_id}").data.decode()
+        self.assertNotIn("Хичээл устгах", body)
+        self.assertNotIn(f"/courses/{self.course_id}/delete", body)
+
     def test_admin_sees_what_will_be_deleted(self):
         self.login("a@d.mn", "admin1234")
         body = self.client.get(f"/courses/{self.course_id}/delete").data.decode()
