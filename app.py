@@ -20,8 +20,10 @@ import csv
 import hmac
 import io
 import os
+import pathlib
 import secrets
 import sqlite3
+import tempfile
 from datetime import date
 from functools import wraps
 
@@ -29,6 +31,7 @@ from flask import (
     Flask, abort, flash, g, redirect, render_template, request, session, url_for, Response,
 )
 
+import backup
 import database as db
 import domain
 import exports
@@ -1249,6 +1252,34 @@ def delete_test(test_id):
 # =====================================================================
 # Админ — хэрэглэгч удирдах
 # =====================================================================
+@app.route("/admin/backup")
+@admin_required
+def admin_backup():
+    """Өгөгдлийн сангийн бүрэн бүтэн хуулбарыг татаж авна.
+
+    Серверийн volume дээрх автомат нөөцлөлт нь санамсаргүй устгал,
+    эвдрэлээс хамгаална — ГЭХДЭЭ volume өөрөө уствал нөөцлөлт нь хамт
+    устана. Тиймээс гадагш хуулбар авах зам ЗААВАЛ хэрэгтэй.
+
+    Ажиллаж байгаа файлыг шууд илгээхгүй: бичилтийн дундуур байвал
+    хагас гүйлгээтэй, WAL горимд бүр дутуу хуулбар гарна. `backup.py`
+    нь SQLite-ийн онлайн нөөцлөх API-аар бүрэн бүтэн хуулбар үүсгэдэг.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        try:
+            target = backup.make_backup(db.DB_PATH, pathlib.Path(tmp))
+            backup.verify(target)
+            data = target.read_bytes()
+        except Exception as exc:            # noqa: BLE001
+            _log(f"[нөөцлөлт] татаж авахад алдаа гарлаа: {exc!r}")
+            flash("Нөөцлөлт үүсгэхэд алдаа гарлаа. Логоос шалтгааныг харна уу.",
+                  "error")
+            return redirect(url_for("admin_users"))
+
+    stamp = domain.now_iso()[:19].replace(":", "").replace("-", "").replace("T", "-")
+    return _download(data, f"edutest-{stamp}.db", "application/vnd.sqlite3")
+
+
 @app.route("/admin/users", methods=["GET", "POST"])
 @admin_required
 def admin_users():

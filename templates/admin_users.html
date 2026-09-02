@@ -5,6 +5,24 @@
 {% block breadcrumb %}<p class="crumb">Зөвхөн админ эрхтэй</p>{% endblock %}
 
 {% block content %}
+{# Серверийн volume дээрх автомат нөөцлөлт нь volume ӨӨРӨӨ уствал хамт
+   устана. Тиймээс гадагш хуулбар авах зам заавал байх ёстой. #}
+<div class="card">
+  <div class="card-head">
+    <h3 class="section-title">Өгөгдлийн сангийн нөөцлөлт</h3>
+  </div>
+  <div class="card-body">
+    <p class="hint" style="margin-top:0;">
+      Бүх өгөгдлийн бүрэн бүтэн хуулбарыг татаж авна. Сервер зогсоох
+      шаардлагагүй — оюутнууд тест өгч байх үед ч аюулгүй.
+      <strong>Серверээс гадуур</strong> хадгалж байх нь өгөгдөл алдахаас
+      хамгаалах цорын ганц найдвартай зам.
+    </p>
+    <a class="btn" href="{{ url_for('admin_backup') }}">
+      {{ icon('download', 16) }}<span>Нөөцлөлт татах</span></a>
+  </div>
+</div>
+
 <div class="card">
   <div class="card-head">
     <h3 class="section-title">Бүртгэлтэй хэрэглэгчид</h3>
