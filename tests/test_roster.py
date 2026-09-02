@@ -184,6 +184,20 @@ class RosterFlowTests(unittest.TestCase):
         # Кодыг өөр бичиглэлээр оруулсан ч хэвийн болгосон хэлбэр таарна.
         self.assertEqual(self.take_test("b23 0101", "Болд").status_code, 302)
 
+    def test_test_page_shows_both_modes_and_marks_current(self):
+        """Сонголт нь харагдаж, аль нь идэвхтэйг ялгаж харуулах ёстой —
+        эс бөгөөс тохиргоо байхгүй мэт харагдана."""
+        body = self.client.get(f"/tests/{self.test_id}").data.decode()
+        self.assertIn('name="entry_mode" value="any"', body)
+        self.assertIn('name="entry_mode" value="roster"', body)
+        head = body[body.find("Хэн тест өгөх вэ"):]
+        self.assertIn("Нээлттэй", head[:400])
+
+        self.set_mode("roster")
+        body = self.client.get(f"/tests/{self.test_id}").data.decode()
+        head = body[body.find("Хэн тест өгөх вэ"):]
+        self.assertIn("Зөвхөн жагсаалтаас", head[:400])
+
     def test_invalid_mode_is_rejected(self):
         self.set_mode("zzz")
         conn = db.connect(self.db_path)

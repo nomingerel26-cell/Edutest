@@ -450,6 +450,10 @@ dialog.modal::backdrop { background: rgba(16, 27, 51, .45); }
 }
 .chip:hover { border-color: var(--primary); color: var(--primary); text-decoration: none; }
 .chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+/* JS ажиллахгүй үед ч сонгосон нь ялгарна — .active-ийг JS тавьдаг. */
+.chip:has(input[type="radio"]:checked) {
+  background: var(--primary); border-color: var(--primary); color: #fff;
+}
 
 /* =====================================================================
    АСУУЛТ / ТЕСТ

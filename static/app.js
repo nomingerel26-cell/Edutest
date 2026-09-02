@@ -288,6 +288,34 @@
   }
 
   /* ---------------------------------------------------------------
+     8b. Radio-той chip бүлэг — сонгосныг нь ХАРАГДУУЛАХ
+
+     .chip дотор нуугдсан radio байдаг тул дарахад сонголт солигдоно,
+     гэхдээ `.active` класс өөрөө шинэчлэгддэггүй. Тэгвэл хэрэглэгчид
+     юу ч болоогүй мэт харагдаж, тохиргоо байхгүй мэт сэтгэгдэл төрүүлнэ.
+     Энэ нь radio-той БҮХ chip бүлэгт ажиллана.
+     --------------------------------------------------------------- */
+  function initChipRadios() {
+    $$(".chips").forEach(function (group) {
+      var radios = $$('input[type="radio"]', group);
+      if (!radios.length) return;
+
+      function sync() {
+        $$(".chip", group).forEach(function (chip) {
+          var input = $('input[type="radio"]', chip);
+          chip.classList.toggle("active", !!(input && input.checked));
+        });
+      }
+
+      radios.forEach(function (r) { r.addEventListener("change", sync); });
+      // Label дээр дарахад change нь заримдаа дараагийн цикл дээр
+      // ажилладаг тул click-ийг ч барина.
+      group.addEventListener("click", function () { setTimeout(sync, 0); });
+      sync();
+    });
+  }
+
+  /* ---------------------------------------------------------------
      9. Асуултын төрөл сонгоход холбогдох талбаруудыг харуулах
      JS унтарсан үед бүх бүлэг харагдаж, сервер тал зөв боловсруулна.
      --------------------------------------------------------------- */
@@ -371,6 +399,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    initChipRadios();
     initQuestionType();
     initMultiHighlight();
     initDrawer();

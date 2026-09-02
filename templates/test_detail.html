@@ -119,9 +119,14 @@
 
 {# ================= 1b. Хэн тест өгөх вэ ================= #}
 <div class="card">
-  <div class="card-head"><h3 class="section-title">Хэн тест өгөх вэ</h3></div>
+  {% set mode = entry_mode(test) %}
+  <div class="card-head">
+    <h3 class="section-title">Хэн тест өгөх вэ</h3>
+    <div class="spacer"></div>
+    <span class="badge {{ 'open' if mode == 'roster' else 'neutral' }}">
+      {{ ENTRY_MODE_LABELS[mode] }}</span>
+  </div>
   <div class="card-body">
-    {% set mode = entry_mode(test) %}
     <form method="post" action="{{ url_for('set_entry_mode', test_id=test.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <div class="chips" role="radiogroup" aria-label="Нэвтрэх горим">
@@ -151,6 +156,9 @@
       {% elif mode == 'roster' %}
         <p class="hint">Жагсаалтад <strong>{{ roster_total }}</strong> оюутан бүртгэлтэй.</p>
       {% endif %}
+      <p class="hint" style="margin-bottom:10px;">
+        Горимоо сонгоод <strong>Хадгалах</strong> дарна уу.
+      </p>
       <button class="btn" type="submit">Хадгалах</button>
     </form>
   </div>
