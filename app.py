@@ -159,8 +159,12 @@ def _migrate_on_startup() -> None:
             print("Өгөгдлийн сангийн шинэчлэл хийгдлээ:")
             for step in steps:
                 print("  •", step)
-        if fresh:
-            _bootstrap_admin(conn)
+        # Зөвхөн `fresh` үед биш, хэрэглэгч огт байхгүй бүрд оролдоно.
+        # Volume залгасан үед эхний boot-д админы хувьсагч тохируулаагүй
+        # бол хоосон DB үлдэж, дахин хэзээ ч админ үүсгэх боломжгүй
+        # болох эрсдэлтэй. `_bootstrap_admin` өөрөө idempotent —
+        # хэрэглэгч байвал юу ч хийхгүй буцдаг.
+        _bootstrap_admin(conn)
     finally:
         conn.close()
 
