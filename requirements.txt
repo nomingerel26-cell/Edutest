@@ -24,3 +24,6 @@ qrcode>=7.4
 # боломж (CSV, Excel, QR, шинжилгээний вэб график) хэвээр ажиллана.
 # Хэмжээ том (~35 MB) тул хэрэггүй бол энэ мөрийг устгаж болно.
 matplotlib>=3.7
+
+# Production WSGI server (Procfile: gunicorn app:app)
+gunicorn>=21.2
