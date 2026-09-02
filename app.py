@@ -530,38 +530,65 @@ def _sync_pair_questions(test) -> tuple[str, str] | None:
     Оролт/гаралт хоёр ЯГ ИЖИЛ асуулттай байх нь зорилготой — ахиц (Δ)
     хэмжихийн тулд хоёр хэмжилт ижил хэрэглүүрээр хийгдэх ёстой.
 
-    Буцаах: (мессеж, төрөл) эсвэл хийх зүйлгүй бол None.
+    ХЭЗЭЭ Ч чимээгүй алгасахгүй — алгассан бол ЯАГААД гэдгээ хэлнэ.
+    Чимээгүй алгасалт нь юу болоод байгааг ойлгох боломжгүй болгодог.
+
+    Буцаах: (мессеж, төрөл) — үргэлж утга буцаана.
     """
-    if test["kind"] != "pre" or not test["pair_id"]:
-        return None
+    def done(msg, kind="success"):
+        _log(f"[хосын синк] тест={test['id']} ({test['kind']}): {msg}")
+        return (msg, kind)
+
+    if test["kind"] != "pre":
+        return done("Зөвхөн Оролтын тестээс Гаралт руу хуулна. Энэ нь "
+                    "Гаралтын тест байна.", "error")
+    if not test["pair_id"]:
+        return done("Энэ тест ямар ч Оролт/Гаралтын хост харьяалагдахгүй "
+                    "тул хуулах Гаралтын тест алга. Хичээлийн хуудсанд хос "
+                    "үүсгэнэ үү.", "error")
+
     post = db.get_pair_tests(g.conn, test["pair_id"]).get("post")
     if not post:
-        return None
+        return done("Энэ хосод Гаралтын тест олдсонгүй.", "error")
 
     source = db.list_questions(g.conn, test["id"])
     if not source:
-        return None
+        return done("Оролтын тестэд асуулт алга — хуулах зүйл байхгүй.", "error")
 
     existing = db.list_questions(g.conn, post["id"])
     if _question_signature(existing) == _question_signature(source):
-        return None  # аль хэдийн ижил — дэмий бичихгүй
+        return done(f"«{post['title']}» аль хэдийн ижил {len(source)} "
+                    f"асуулттай байна — өөрчлөлт хийсэнгүй.", "info")
 
     # Оролдлого бүртгэгдсэн бол асуултыг СОЛИХГҮЙ: асуулт устахад
     # answers мөрүүд cascade-аар дагаж устаж, оюутны үр дүн алга болно.
     if existing and db.count_test_attempts(g.conn, post["id"]):
-        return (f"«{post['title']}» дээр оюутны оролдлого бүртгэгдсэн тул "
-                f"асуултыг хуулаагүй. Шаардлагатай бол гараар шинэчилнэ үү.",
-                "error")
+        return done(f"«{post['title']}» дээр оюутны оролдлого бүртгэгдсэн тул "
+                    f"асуултыг хуулаагүй. Шаардлагатай бол гараар шинэчилнэ үү.",
+                    "error")
 
     replaced = db.delete_test_questions(g.conn, post["id"]) if existing else 0
     copied = db.copy_questions(g.conn, test["id"], post["id"])
-    g.conn.commit()
 
     if replaced:
-        return (f"«{post['title']}» руу {copied} асуулт хуулж, хуучин "
-                f"{replaced} асуултыг сольлоо.", "success")
-    return (f"«{post['title']}» руу {copied} асуулт хуулагдлаа. Оролт/гаралт "
-            f"одоо ижил асуулттай боллоо.", "success")
+        return done(f"«{post['title']}» руу {copied} асуулт хуулж, хуучин "
+                    f"{replaced} асуултыг сольлоо.")
+    return done(f"«{post['title']}» руу {copied} асуулт хуулагдлаа. "
+                f"Оролт/Гаралт одоо ижил асуулттай боллоо.")
+
+
+@app.route("/tests/<int:test_id>/sync-pair", methods=["POST"])
+@login_required
+def sync_pair_questions(test_id):
+    """Оролтын асуултыг Гаралт руу ГАРААР хуулна.
+
+    Автомат хуулалт нь зөвхөн тест нээгдэх мөчид ажилладаг. Нээсний
+    ДАРАА асуулт нэмсэн бол энэ товчоор дахин тэнцүүлнэ.
+    """
+    test = owned_test(test_id)
+    message, kind = _sync_pair_questions(test)
+    flash(message, kind)
+    return redirect(url_for("test_detail", test_id=test_id))
 
 
 @app.route("/tests/<int:test_id>/status", methods=["POST"])
@@ -578,10 +605,9 @@ def change_test_status(test_id):
     db.set_test_status(g.conn, test_id, status)
     labels = {"draft": "Ноорог", "open": "Нээлттэй", "closed": "Хаагдсан"}
     flash(f"«{test['title']}» тестийн төлөв: {labels[status]}.", "success")
-    if status == "open":
-        synced = _sync_pair_questions(test)
-        if synced:
-            flash(synced[0], synced[1])
+    if status == "open" and test["kind"] == "pre" and test["pair_id"]:
+        message, kind = _sync_pair_questions(test)
+        flash(message, kind)
     return redirect(url_for("test_detail", test_id=test_id))
 
 

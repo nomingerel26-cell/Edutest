@@ -42,6 +42,15 @@
       <a class="btn btn-ghost" href="{{ url_for('test_results', test_id=test.id) }}">
         {{ icon('results', 16) }}<span>Үр дүн</span></a>
     {% endif %}
+    {# Автомат хуулалт нь тест НЭЭГДЭХ мөчид ажилладаг. Нээсний дараа
+       асуулт нэмсэн бол энэ товчоор Гаралттай дахин тэнцүүлнэ. #}
+    {% if test.kind == 'pre' and test.pair_id and questions %}
+      <form method="post" action="{{ url_for('sync_pair_questions', test_id=test.id) }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-ghost" type="submit">
+          {{ icon('pair', 16) }}<span>Гаралт руу хуулах</span></button>
+      </form>
+    {% endif %}
     <form method="post" action="{{ url_for('duplicate_test', test_id=test.id) }}" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button class="btn btn-ghost" type="submit">{{ icon('copy', 16) }}<span>Хувилах</span></button>

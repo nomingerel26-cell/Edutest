@@ -182,6 +182,68 @@ class PairSyncTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["text"], "Гаралтын өөр асуулт")
 
+    def test_manual_button_syncs_after_test_is_already_open(self):
+        """Нээсний ДАРАА нэмсэн асуулт — автомат синк ажиллахаа больсон
+        байх тул гар товч хэрэгтэй."""
+        self.add_question(self.tests["pre"], "Эхний асуулт")
+        self.open_pre()
+        self.assertEqual(len(self.questions("post")), 1)
+
+        # Тест нээлттэй хэвээр байхад шинэ асуулт нэмнэ.
+        self.add_question(self.tests["pre"], "Хожим нэмсэн асуулт")
+        self.assertEqual(len(self.questions("post")), 1, "автоматаар хуулагдах ёсгүй")
+
+        r = self.client.post(f"/tests/{self.tests['pre']}/sync-pair",
+                             data={"csrf_token": self.token()}, follow_redirects=True)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(self.questions("post")), 2)
+        self.assertEqual(
+            self.app_module._question_signature(self.questions("post")),
+            self.app_module._question_signature(self.questions("pre")))
+
+    def test_sync_never_skips_silently(self):
+        """Алгассан тохиолдол бүрд ЯАГААД гэдгийг хэлэх ёстой."""
+        # 1. Асуулт байхгүй
+        msg, kind = self._sync_result(self.tests["pre"])
+        self.assertEqual(kind, "error")
+        self.assertIn("асуулт алга", msg)
+
+        # 2. Аль хэдийн ижил
+        self.add_question(self.tests["pre"], "Асуулт")
+        self.open_pre()
+        msg, kind = self._sync_result(self.tests["pre"])
+        self.assertEqual(kind, "info")
+        self.assertIn("аль хэдийн ижил", msg)
+
+        # 3. Гаралтын тестээс хуулах гэвэл
+        msg, kind = self._sync_result(self.tests["post"])
+        self.assertEqual(kind, "error")
+        self.assertIn("Гаралтын тест байна", msg)
+
+    def test_sync_reports_when_test_has_no_pair(self):
+        conn = db.connect(self.db_path)
+        lone = db.create_test(conn, self.course_id, None, None, "Хосгүй тест",
+                              "pre", "draft",
+                              domain.generate_share_code("SYN101", "x"),
+                              domain.now_iso())
+        conn.commit()
+        conn.close()
+        msg, kind = self._sync_result(lone)
+        self.assertEqual(kind, "error")
+        self.assertIn("хост харьяалагдахгүй", msg)
+
+    def _sync_result(self, test_id):
+        """_sync_pair_questions-ийг шууд дуудна.
+
+        Холболтыг ӨӨРӨӨ хаахгүй — teardown_request нь commit хийгээд
+        хаадаг тул давхар хаавал ProgrammingError өгнө.
+        """
+        with self.app_module.app.test_request_context():
+            from flask import g
+            g.conn = db.connect(self.db_path)
+            test = db.get_test(g.conn, test_id)
+            return self.app_module._sync_pair_questions(test)
+
     def test_opening_post_does_not_touch_pre(self):
         self.add_question(self.tests["post"], "Зөвхөн гаралтад")
         self.client.post(f"/tests/{self.tests['post']}/status",
