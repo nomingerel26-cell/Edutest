@@ -192,6 +192,27 @@ def _startup_diagnostics() -> None:
          f"({len(backup.list_backups())} файл)")
     _log(f"  {'имэйл илгээх':<24}: "
          f"{'БЭЛЭН' if mailer.is_configured() else 'тохируулаагүй'}")
+
+    # --- Түгээмэл тохиргооны алдааг барих ---
+    # Хувьсагч хоосон биш гэдэг нь утга нь ЗӨВ гэсэн үг биш. Доорх хоёр
+    # алдаа бодит ашиглалтад давтагдан гарсан тул тусад нь анхааруулна.
+    for key, raw in sorted(os.environ.items()):
+        if not key.startswith("EDUTEST_") or not raw:
+            continue
+        # `<...>` бол зааврын орлуулах тэмдэглэгээ. Утга нь БҮХЭЛДЭЭ
+        # хаалтанд байвал хуулахдаа хаалтыг нь хасаагүй гэсэн үг.
+        # EDUTEST_SMTP_FROM дээрх `Нэр <хаяг>` нь ЗӨВ — өмнө нь текст
+        # байгаа тул энд баригдахгүй.
+        if raw.startswith("<") and raw.endswith(">"):
+            _log(f"  АНХААР: {key} нь «{raw}» — зааврын тэмдэглэгээг хуулсан "
+                 f"бололтой. < > хаалтыг хасаж, бодит утгаа бичнэ үү.")
+
+    smtp_host = (os.environ.get("EDUTEST_SMTP_HOST") or "").lower()
+    smtp_password = os.environ.get("EDUTEST_SMTP_PASSWORD") or ""
+    if "gmail" in smtp_host and smtp_password and len(smtp_password) != 16:
+        _log(f"  АНХААР: Gmail-ийн App Password 16 тэмдэгт байдаг, харин "
+             f"EDUTEST_SMTP_PASSWORD {len(smtp_password)} тэмдэгт байна. "
+             f"Энгийн нууц үг оруулсан бол Gmail хүлээж авахгүй.")
     _log("----------------------------------")
 
 
