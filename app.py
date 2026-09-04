@@ -35,6 +35,7 @@ import backup
 import database as db
 import domain
 import exports
+import mailer
 
 app = Flask(__name__)
 
@@ -1055,6 +1056,11 @@ def pair_comparison(pair_id):
         "comparison.html", pair=pair, tests=tests, rows=rows, summary=summary,
         groups=groups, filter_group=group, filter_status=status,
         total_rows=len(all_rows), chart=chart,
+        # Имэйл товч харуулах эсэх, ямар хаяг руу явахыг УРЬДЧИЛАН
+        # харуулахын тулд — багш дараад л мэдэх ёсгүй.
+        mail_ready=mailer.is_configured(),
+        mail_missing=mailer.missing_settings(),
+        mail_to=(current_user() or {}).get("email"),
     )
 
 
@@ -1153,6 +1159,95 @@ def pair_report_docx(pair_id):
         data, filename,
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
+
+
+def _report_email_body(pair, summary) -> str:
+    """Имэйлийн бие — хавсралт нээхээс өмнө гол тоог харуулна."""
+    def pct(value):
+        # format_credit нь 40.0 -> '40', 40.5 -> '40.5' болгоно.
+        return "—" if value is None else f"{domain.format_credit(value)}%"
+
+    lines = [
+        f"{pair['course_name']} ({pair['course_code']})",
+        f"Хос: {pair['name']}",
+        f"Бүлэг: {pair['group_label']}",
+        "",
+        f"Тааруулсан оюутан : {summary['matched_count']}",
+        f"Оролтын дундаж    : {pct(summary['avg_pre'])}",
+        f"Гаралтын дундаж   : {pct(summary['avg_post'])}",
+        f"Дундаж ахиц       : {pct(summary['avg_delta'])}",
+        "",
+        f"Ахисан  : {summary['improved_count']}",
+        f"Буурсан : {summary['declined_count']}",
+        f"Хэвээр  : {summary['same_count']}",
+    ]
+    if summary["pre_only_count"] or summary["post_only_count"]:
+        lines += ["",
+                  f"Зөвхөн Оролт өгсөн  : {summary['pre_only_count']}",
+                  f"Зөвхөн Гаралт өгсөн : {summary['post_only_count']}"]
+    if summary["conflict_count"]:
+        lines += ["", f"АНХААР: {summary['conflict_count']} нэрийн зөрчил байна "
+                      f"(ижил кодтой өөр нэр). Тайлангаас шалгана уу."]
+    lines += ["", "Дэлгэрэнгүйг хавсаргасан Word тайлан ба Excel хүснэгтээс харна уу.",
+              "", "— EduTest"]
+    return "\n".join(lines)
+
+
+@app.route("/pairs/<int:pair_id>/report.email", methods=["POST"])
+@login_required
+def email_pair_report(pair_id):
+    """Word тайлан + Excel хүснэгтийг НЭВТЭРСЭН багшийн ӨӨРИЙН хаяг руу илгээнэ.
+
+    Хүлээн авагчийг формоос АВАХГҮЙ — session дэх хэрэглэгчийн хаягийг
+    хэрэглэнэ. Ингэснээр буруу хаяг руу оюутны өгөгдөл явах, мөн энэ
+    хаягийг дурын хаяг руу файл илгээх суваг болгон ашиглах зам хаагдана.
+    """
+    pair = _owned_pair(pair_id)
+    user = current_user()
+    to = (user.get("email") or "").strip()
+    if not to:
+        flash("Таны бүртгэлд имэйл хаяг байхгүй байна.", "error")
+        return redirect(url_for("pair_comparison", pair_id=pair_id))
+
+    missing = mailer.missing_settings()
+    if missing:
+        flash("Имэйл илгээх тохиргоо хийгдээгүй байна: " + ", ".join(missing)
+              + ". Серверийн орчны хувьсагчид нэмнэ үү.", "error")
+        return redirect(url_for("pair_comparison", pair_id=pair_id))
+
+    rows, tests = _pair_rows(pair_id)
+    pair = dict(pair)
+    pair["group_label"] = _pair_group_label(tests)
+    summary = domain.comparison_summary(rows)
+
+    docx = exports.build_pair_report(
+        pair, rows, summary,
+        institution=os.environ.get("EDUTEST_INSTITUTION", "EduTest"),
+    )
+    xlsx = exports.build_pair_workbook(pair, rows, summary, tests)
+    base = exports.build_filename(pair["course_code"], pair["group_label"],
+                                  "PrePost_Report", "docx")
+
+    try:
+        mailer.send(
+            to,
+            f"{pair['course_code']} — Оролт/Гаралтын тайлан ({pair['group_label']})",
+            _report_email_body(pair, summary),
+            attachments=[
+                (base, docx,
+                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+                (base[:-4] + "xlsx", xlsx,
+                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            ],
+        )
+    except mailer.MailError as exc:
+        _log(f"[имэйл] хос={pair_id} илгээлт амжилтгүй: {exc}")
+        flash(f"Имэйл илгээгдсэнгүй. {exc}", "error")
+        return redirect(url_for("pair_comparison", pair_id=pair_id))
+
+    _log(f"[имэйл] хос={pair_id} -> {to} илгээгдлээ")
+    flash(f"Тайлан {to} хаяг руу илгээгдлээ (Word + Excel хавсаргасан).", "success")
+    return redirect(url_for("pair_comparison", pair_id=pair_id))
 
 
 # =====================================================================

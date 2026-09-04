@@ -18,7 +18,31 @@
     {{ icon('sheet', 14) }}<span>Excel татах</span></a>
   <a class="btn btn-ghost btn-sm" href="{{ url_for('pair_report_docx', pair_id=pair.id) }}">
     {{ icon('doc', 14) }}<span>Word тайлан татах</span></a>
+
+  {# Зөвхөн НЭВТЭРСЭН багшийн өөрийн хаяг руу явна — хүлээн авагчийг
+     формоос авдаггүй тул буруу хаяг руу оюутны өгөгдөл явахгүй. #}
+  {% if mail_ready and mail_to %}
+    <form method="post" action="{{ url_for('email_pair_report', pair_id=pair.id) }}"
+          class="inline"
+          data-confirm="Word тайлан ба Excel хүснэгтийг {{ mail_to }} хаяг руу илгээх үү?"
+          data-confirm-title="Имэйлээр илгээх"
+          data-confirm-ok-label="Илгээх">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn-ghost btn-sm" type="submit">
+        {{ icon('mail', 14) }}<span>Имэйлээр илгээх</span></button>
+    </form>
+  {% endif %}
 </div>
+{% if not mail_ready %}
+  <p class="hint" style="margin:6px 0 0;">
+    Имэйлээр илгээх боломж унтраалттай — серверт
+    {{ mail_missing | join(', ') }} тохируулаагүй байна.
+  </p>
+{% elif not mail_to %}
+  <p class="hint" style="margin:6px 0 0;">
+    Имэйлээр илгээхийн тулд таны бүртгэлд имэйл хаяг байх шаардлагатай.
+  </p>
+{% endif %}
 {% endblock %}
 
 {% block content %}

@@ -5,6 +5,7 @@
 #
 # Стандарт сангаар хийгдсэн зүйлс:
 #   sqlite3 (өгөгдлийн сан), csv (CSV экспорт),
+#   smtplib/email (тайлан имэйлээр илгээх),
 #   hashlib/hmac/secrets (нууц үгийн хэшлэлт, CSRF token),
 #   re, unicodedata, io, os, datetime, unittest (тест).
 
