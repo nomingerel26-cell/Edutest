@@ -24,7 +24,7 @@ import pathlib
 import secrets
 import sqlite3
 import tempfile
-from datetime import date
+from datetime import date, datetime, timezone
 from functools import wraps
 
 from flask import (
@@ -173,16 +173,25 @@ def _startup_diagnostics() -> None:
     _log("--- EduTest эхлэлийн оношилгоо ---")
     _log(f"  DB зам          : {db.DB_PATH}")
     _log(f"  DB файл байгаа  : {db.DB_PATH.exists()}")
+    secrets_keys = ("EDUTEST_SECRET", "EDUTEST_ADMIN_PASSWORD", "EDUTEST_SMTP_PASSWORD")
     for key in ("EDUTEST_DB", "EDUTEST_SECRET", "EDUTEST_ENV", "EDUTEST_HTTPS",
-                "EDUTEST_ADMIN_EMAIL", "EDUTEST_ADMIN_PASSWORD", "EDUTEST_ADMIN_NAME"):
+                "EDUTEST_ADMIN_EMAIL", "EDUTEST_ADMIN_PASSWORD", "EDUTEST_ADMIN_NAME",
+                "EDUTEST_INSTITUTION",
+                "EDUTEST_BACKUP_DIR", "EDUTEST_BACKUP_KEEP",
+                "EDUTEST_SMTP_HOST", "EDUTEST_SMTP_PORT", "EDUTEST_SMTP_USER",
+                "EDUTEST_SMTP_PASSWORD", "EDUTEST_SMTP_FROM", "EDUTEST_SMTP_TLS"):
         raw = os.environ.get(key)
         if raw is None:
             state = "ТОХИРУУЛААГҮЙ"
-        elif key in ("EDUTEST_SECRET", "EDUTEST_ADMIN_PASSWORD"):
+        elif key in secrets_keys:
             state = f"тохируулсан ({len(raw)} тэмдэгт)"
         else:
             state = repr(raw)
         _log(f"  {key:<24}: {state}")
+    _log(f"  {'нөөцлөлтийн хавтас':<24}: {backup.backup_dir()} "
+         f"({len(backup.list_backups())} файл)")
+    _log(f"  {'имэйл илгээх':<24}: "
+         f"{'БЭЛЭН' if mailer.is_configured() else 'тохируулаагүй'}")
     _log("----------------------------------")
 
 
@@ -1460,7 +1469,16 @@ def admin_users():
                            role, department, domain.now_iso())
             flash(f"«{full_name}» хэрэглэгч нэмэгдлээ.", "success")
         return redirect(url_for("admin_users"))
-    return render_template("admin_users.html", users=db.list_users(g.conn))
+    # Хуваарьт нөөцлөлт ажилласан эсэхийг UI-аас харах боломж. Үүнгүйгээр
+    # cron ажиллаж байгаа эсэхийг зөвхөн серверийн лог уншиж мэдэх байсан.
+    backups = backup.list_backups()
+    now = datetime.now(timezone.utc).timestamp()
+    for row in backups:
+        row["when"] = datetime.fromtimestamp(row["mtime"], timezone.utc) \
+                              .strftime("%Y-%m-%d %H:%M UTC")
+        row["age_hours"] = round((now - row["mtime"]) / 3600, 1)
+    return render_template("admin_users.html", users=db.list_users(g.conn),
+                           backups=backups, backup_dir=backup.backup_dir())
 
 
 @app.route("/admin/users/<int:user_id>/delete", methods=["POST"])

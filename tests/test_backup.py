@@ -20,6 +20,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from unittest import mock  # noqa: E402
+
 import backup  # noqa: E402
 import database as db  # noqa: E402
 import domain  # noqa: E402
@@ -157,6 +159,39 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(len(self.files()), 3)
 
 
+class BackupListingTests(unittest.TestCase):
+    """Хуваарьт нөөцлөлт ажилласан эсэхийг UI-аас харах боломж."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.out = pathlib.Path(self.tmpdir.name) / "backups"
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
+    def test_missing_directory_is_empty_not_an_error(self):
+        self.assertEqual(backup.list_backups(self.out), [])
+
+    def test_newest_first(self):
+        self.out.mkdir(parents=True)
+        for index, name in enumerate(["edutest-a.db", "edutest-b.db", "edutest-c.db"]):
+            path = self.out / name
+            path.write_bytes(b"x" * (index + 1) * 1024)
+            os.utime(path, (2_000_000 + index * 60,) * 2)
+        rows = backup.list_backups(self.out)
+        self.assertEqual([r["name"] for r in rows],
+                         ["edutest-c.db", "edutest-b.db", "edutest-a.db"])
+        self.assertEqual(rows[0]["size_kb"], 3.0)
+
+    def test_unrelated_files_are_ignored(self):
+        self.out.mkdir(parents=True)
+        (self.out / "edutest-ok.db").write_bytes(b"x")
+        (self.out / "readme.txt").write_bytes(b"x")
+        (self.out / "edutest-partial.db.partial").write_bytes(b"x")
+        self.assertEqual([r["name"] for r in backup.list_backups(self.out)],
+                         ["edutest-ok.db"])
+
+
 class BackupRouteTests(unittest.TestCase):
     """/admin/backup — зөвхөн админ, бүрэн бүтэн файл буцаана."""
 
@@ -202,6 +237,22 @@ class BackupRouteTests(unittest.TestCase):
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM users").fetchone()[0], 2)
         finally:
             conn.close()
+
+    def test_admin_page_says_when_no_backup_has_run(self):
+        self.login("a@b.mn", "admin1234")
+        with mock.patch.object(backup, "list_backups", return_value=[]):
+            body = self.client.get("/admin/users").data.decode()
+        self.assertIn("хараахан ажиллаагүй", body)
+
+    def test_admin_page_lists_existing_backups(self):
+        self.login("a@b.mn", "admin1234")
+        fake = [{"name": "edutest-20260904-020000.db", "size_kb": 118.0,
+                 "mtime": 1_800_000_000.0}]
+        with mock.patch.object(backup, "list_backups", return_value=fake):
+            body = self.client.get("/admin/users").data.decode()
+        self.assertIn("edutest-20260904-020000.db", body)
+        self.assertIn("118.0 KB", body)
+        self.assertNotIn("хараахан ажиллаагүй", body)
 
     def test_teacher_is_refused(self):
         self.login("t@b.mn", "teach1234")

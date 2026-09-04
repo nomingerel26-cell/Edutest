@@ -92,6 +92,43 @@ def verify(path: Path) -> int:
         conn.close()
 
 
+def backup_dir() -> Path:
+    """Нөөцлөлт хаана хадгалагдах вэ.
+
+    `main()`-ийн анхдагчтай ИЖИЛ логик — хуваарьт ажил `--out`-гүй
+    ажилласан ч, `/data/backups` гэж зааж ажилласан ч энэ хавтас руу
+    ирнэ (EDUTEST_DB нь /data/... тул эцэг хавтас нь /data).
+    """
+    override = (os.environ.get("EDUTEST_BACKUP_DIR") or "").strip()
+    if override:
+        return Path(override)
+    source = Path((os.environ.get("EDUTEST_DB") or "").strip()) if os.environ.get(
+        "EDUTEST_DB") else db.DB_PATH
+    return source.parent / "backups"
+
+
+def list_backups(out_dir: Path | None = None) -> list:
+    """Байгаа нөөцлөлтүүд, ШИНЭ нь эхэндээ.
+
+    Хуваарьт нөөцлөлт ажилласан эсэхийг UI-аас харахад хэрэглэнэ.
+    Хавтас байхгүй бол хоосон жагсаалт — алдаа биш, зүгээр л хараахан
+    нэг ч нөөцлөлт хийгдээгүй гэсэн үг.
+    """
+    out_dir = out_dir or backup_dir()
+    if not out_dir.is_dir():
+        return []
+    rows = []
+    for path in out_dir.glob("edutest-*.db"):
+        try:
+            stat = path.stat()
+        except OSError:
+            continue        # зэрэг ажиллаж буй rotation устгасан байж болно
+        rows.append({"name": path.name, "size_kb": round(stat.st_size / 1024, 1),
+                     "mtime": stat.st_mtime})
+    rows.sort(key=lambda r: r["mtime"], reverse=True)
+    return rows
+
+
 def rotate(out_dir: Path, keep: int) -> list:
     """Хамгийн сүүлийн `keep` ширхэгийг үлдээж, бусдыг устгана.
 

@@ -21,6 +21,37 @@
     <a class="btn" href="{{ url_for('admin_backup') }}">
       {{ icon('download', 16) }}<span>Нөөцлөлт татах</span></a>
   </div>
+
+  {# Хуваарьт нөөцлөлт ажиллаж байгаа эсэхийг ЭНДЭЭС харна. #}
+  <div class="card-body" style="border-top:1px solid var(--border);">
+    <h4 style="margin:0 0 8px;">Серверт хадгалагдсан нөөцлөлт</h4>
+    {% if backups %}
+      <p class="hint" style="margin:0 0 10px;">
+        <code>{{ backup_dir }}</code> — {{ backups|length }} ширхэг.
+        Хамгийн сүүлийнх <strong>{{ backups[0].age_hours }} цагийн өмнө</strong>.
+      </p>
+      <div class="table-wrap">
+        <table class="data stacked">
+          <thead><tr><th>Файл</th><th>Үүссэн</th><th class="n">Хэмжээ</th></tr></thead>
+          <tbody>
+          {% for b in backups[:14] %}
+            <tr>
+              <td data-label="Файл"><code>{{ b.name }}</code></td>
+              <td data-label="Үүссэн">{{ b.when }}</td>
+              <td class="n" data-label="Хэмжээ">{{ b.size_kb }} KB</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="hint" style="margin:0;">
+        <code>{{ backup_dir }}</code> хавтас хоосон эсвэл байхгүй байна —
+        <strong>автомат нөөцлөлт хараахан ажиллаагүй</strong>. Dokploy →
+        Schedules дээр хуваарь тохируулсан бол эхний ажиллалтыг хүлээнэ үү.
+      </p>
+    {% endif %}
+  </div>
 </div>
 
 <div class="card">
